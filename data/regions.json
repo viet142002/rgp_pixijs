@@ -1,0 +1,32 @@
+{
+  "dataVersion": 1,
+  "regions": [
+    {
+      "id": "region_village",
+      "name": "Thanh Thủy Trấn",
+      "width": 40,
+      "height": 30,
+      "tileSize": 32,
+      "encounterRate": 0.02,
+      "isSafeZone": true
+    },
+    {
+      "id": "region_forest",
+      "name": "Hắc Phong Lâm",
+      "width": 60,
+      "height": 50,
+      "tileSize": 32,
+      "encounterRate": 0.15,
+      "isSafeZone": false
+    },
+    {
+      "id": "region_sect_main",
+      "name": "Thanh Vân Sơn",
+      "width": 50,
+      "height": 40,
+      "tileSize": 32,
+      "encounterRate": 0.05,
+      "isSafeZone": true
+    }
+  ]
+}

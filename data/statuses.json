@@ -1,0 +1,114 @@
+{
+  "dataVersion": 1,
+  "statuses": [
+    {
+      "id": "STUN",
+      "name": "Choáng",
+      "duration": 1,
+      "tickEffect": { "skipTurn": true },
+      "dispellable": true
+    },
+    {
+      "id": "POISON",
+      "name": "Độc",
+      "duration": 3,
+      "tickEffect": { "damage": { "type": "percent_max_hp", "value": 0.05 } },
+      "dispellable": true
+    },
+    {
+      "id": "BURN",
+      "name": "Bỏng",
+      "duration": 3,
+      "tickEffect": { "damage": { "type": "percent_max_hp", "value": 0.10 } },
+      "modifier": { "accuracy": -0.10 },
+      "dispellable": true
+    },
+    {
+      "id": "FREEZE",
+      "name": "Đóng Băng",
+      "duration": 2,
+      "tickEffect": {},
+      "modifier": { "speedMultiplier": 0.5, "evasion": -0.3 },
+      "dispellable": true
+    },
+    {
+      "id": "SILENCE",
+      "name": "Câm Lặng",
+      "duration": 2,
+      "tickEffect": {},
+      "modifier": { "silenced": true },
+      "dispellable": true
+    },
+    {
+      "id": "TAUNT",
+      "name": "Khiêu Khích",
+      "duration": 2,
+      "tickEffect": {},
+      "modifier": { "taunted": true },
+      "dispellable": false
+    },
+    {
+      "id": "BLEED",
+      "name": "Chảy Máu",
+      "duration": 4,
+      "tickEffect": { "damage": { "type": "percent_max_hp", "value": 0.03 } },
+      "modifier": { "damageTakenMultiplier": 1.2 },
+      "dispellable": true
+    },
+    {
+      "id": "REGEN",
+      "name": "Hồi Phục",
+      "duration": 3,
+      "tickEffect": { "heal": { "type": "percent_max_hp", "value": 0.08 } },
+      "dispellable": false
+    },
+    {
+      "id": "ATK_UP",
+      "name": "Tăng Công",
+      "duration": 3,
+      "tickEffect": {},
+      "modifier": { "damageMultiplier": 1.25 },
+      "dispellable": true
+    },
+    {
+      "id": "ATK_DOWN",
+      "name": "Giảm Công",
+      "duration": 3,
+      "tickEffect": {},
+      "modifier": { "damageMultiplier": 0.75 },
+      "dispellable": true
+    },
+    {
+      "id": "DEF_UP",
+      "name": "Tăng Thủ",
+      "duration": 3,
+      "tickEffect": {},
+      "modifier": { "defenseMultiplier": 1.25 },
+      "dispellable": true
+    },
+    {
+      "id": "DEF_DOWN",
+      "name": "Giảm Thủ",
+      "duration": 3,
+      "tickEffect": {},
+      "modifier": { "defenseMultiplier": 0.75 },
+      "dispellable": true
+    },
+    {
+      "id": "SPD_UP",
+      "name": "Tăng Tốc",
+      "duration": 3,
+      "tickEffect": {},
+      "modifier": { "speedMultiplier": 1.20 },
+      "dispellable": true
+    },
+    {
+      "id": "SPD_DOWN",
+      "name": "Giảm Tốc",
+      "duration": 3,
+      "tickEffect": {},
+      "modifier": { "speedMultiplier": 0.80 },
+      "dispellable": true
+    }
+  ]
+}

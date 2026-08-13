@@ -1,0 +1,95 @@
+{
+  "dataVersion": 1,
+  "traits": [
+    {
+      "id": "RIGHTEOUS",
+      "name": "Chính Nghĩa",
+      "modifiers": {
+        "hatredMultiplier": 1.5,
+        "aggression": 0.3
+      },
+      "tags": ["moral", "combat"]
+    },
+    {
+      "id": "COWARD",
+      "name": "Nhát Gan",
+      "modifiers": {
+        "cowardice": 0.8,
+        "speedMultiplier": 1.1
+      },
+      "tags": ["behavior"]
+    },
+    {
+      "id": "BLOODTHIRSTY",
+      "name": "Huyết Chiến",
+      "modifiers": {
+        "damageMultiplier": 1.2,
+        "aggression": 0.5
+      },
+      "tags": ["combat"]
+    },
+    {
+      "id": "COMPASSIONATE",
+      "name": "Từ Bi",
+      "modifiers": {
+        "forgiveRate": 2.0,
+        "loyalty": 0.5
+      },
+      "tags": ["social"]
+    },
+    {
+      "id": "CUNNING",
+      "name": "Xảo Quyệt",
+      "modifiers": {
+        "critRateBonus": 0.15,
+        "accuracy": 0.1
+      },
+      "tags": ["combat"]
+    },
+    {
+      "id": "IRON_WILL",
+      "name": "Sắt �",
+      "modifiers": {
+        "evasion": 0.1,
+        "defenseMultiplier": 1.1
+      },
+      "tags": ["defense"]
+    },
+    {
+      "id": "GREEDY",
+      "name": "Tham Lam",
+      "modifiers": {
+        "aggression": 0.2,
+        "damageMultiplier": 1.05
+      },
+      "tags": ["social"]
+    },
+    {
+      "id": "PROTECTOR",
+      "name": "Hộ Vệ",
+      "modifiers": {
+        "loyalty": 0.9,
+        "defenseMultiplier": 1.15
+      },
+      "tags": ["social", "defense"]
+    },
+    {
+      "id": "VINDICTIVE",
+      "name": "Hay Trả Thù",
+      "modifiers": {
+        "grudgeStrength": 1.5,
+        "hatredMultiplier": 1.3
+      },
+      "tags": ["social"]
+    },
+    {
+      "id": "TOUGH",
+      "name": "Cứng Cáp",
+      "modifiers": {
+        "defenseMultiplier": 1.2,
+        "hp": 1.2
+      },
+      "tags": ["defense"]
+    }
+  ]
+}

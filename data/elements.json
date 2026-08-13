@@ -1,0 +1,21 @@
+{
+  "dataVersion": 1,
+  "elements": [
+    { "id": "fire",      "name": "Hỏa",     "color": "#ff6b35" },
+    { "id": "water",     "name": "Thủy",    "color": "#4a90e2" },
+    { "id": "wind",      "name": "Phong",   "color": "#7ed321" },
+    { "id": "lightning", "name": "Lôi",     "color": "#9013fe" },
+    { "id": "earth",     "name": "Thổ",     "color": "#8b6f47" },
+    { "id": "wood",      "name": "Mộc",     "color": "#50e3c2" },
+    { "id": "none",      "name": "Vô",      "color": "#aaaaaa" }
+  ],
+  "matchup": {
+    "fire":      { "weakness": "water", "strength": "wind" },
+    "water":     { "weakness": "earth", "strength": "fire" },
+    "wind":      { "weakness": "fire",  "strength": "earth" },
+    "lightning": { "weakness": "earth", "strength": "water" },
+    "earth":     { "weakness": "wind",  "strength": "lightning" },
+    "wood":      { "weakness": "fire",  "strength": "earth" },
+    "none":      { "weakness": "none",  "strength": "none" }
+  }
+}

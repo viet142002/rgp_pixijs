@@ -1,0 +1,53 @@
+{
+  "dataVersion": 1,
+  "items": [
+    {
+      "id": "hp_potion_small",
+      "name": "Đan Dược Khôi Phục (Nhỏ)",
+      "type": "consumable",
+      "rarity": "common",
+      "effect": { "heal": { "type": "flat", "value": 50 } },
+      "value": 10
+    },
+    {
+      "id": "hp_potion_medium",
+      "name": "Đan Dược Khôi Phục (Vừa)",
+      "type": "consumable",
+      "rarity": "common",
+      "effect": { "heal": { "type": "flat", "value": 150 } },
+      "value": 30
+    },
+    {
+      "id": "mp_potion_small",
+      "name": "Linh Dược Bổ Sung (Nhỏ)",
+      "type": "consumable",
+      "rarity": "common",
+      "effect": { "restoreMp": { "type": "flat", "value": 30 } },
+      "value": 12
+    },
+    {
+      "id": "antidote",
+      "name": "Giải Độc Đan",
+      "type": "consumable",
+      "rarity": "common",
+      "effect": { "dispell": ["POISON", "BURN"] },
+      "value": 15
+    },
+    {
+      "id": "iron_sword",
+      "name": "Sắt Kiếm",
+      "type": "weapon",
+      "rarity": "common",
+      "statBonus": { "attack": 8 },
+      "value": 50
+    },
+    {
+      "id": "leather_armor",
+      "name": "Da Giáp",
+      "type": "armor",
+      "rarity": "common",
+      "statBonus": { "defense": 5 },
+      "value": 40
+    }
+  ]
+}

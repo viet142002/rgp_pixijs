@@ -1,0 +1,106 @@
+{
+  "dataVersion": 1,
+  "templates": [
+    {
+      "id": "village_elder",
+      "name": "Lý Trưởng Lão",
+      "gender": "Male",
+      "realm": "luyen_khi_7",
+      "stats": { "hp": 240, "mp": 120, "attack": 24, "defense": 22, "speed": 14, "critRate": 0.05, "critDamage": 1.5, "evasion": 0.05, "accuracy": 0.95 },
+      "traits": ["RIGHTEOUS", "PROTECTOR"],
+      "factionId": "village_council",
+      "element": "earth",
+      "inventory": ["hp_potion_small"],
+      "homeRegion": "region_village",
+      "spawnPosition": { "x": 512, "y": 384 }
+    },
+    {
+      "id": "village_merchant",
+      "name": "Trần Thương Nhân",
+      "gender": "Male",
+      "realm": "luyen_khi_3",
+      "stats": { "hp": 160, "mp": 80, "attack": 16, "defense": 14, "speed": 10, "critRate": 0.03, "critDamage": 1.5, "evasion": 0.05, "accuracy": 0.95 },
+      "traits": ["GREEDY"],
+      "factionId": "village_council",
+      "element": "none",
+      "inventory": ["hp_potion_small", "hp_potion_medium", "mp_potion_small", "antidote"],
+      "homeRegion": "region_village",
+      "spawnPosition": { "x": 384, "y": 256 }
+    },
+    {
+      "id": "village_guard",
+      "name": "Lý Vệ Sĩ",
+      "gender": "Male",
+      "realm": "luyen_khi_5",
+      "stats": { "hp": 200, "mp": 80, "attack": 20, "defense": 20, "speed": 12, "critRate": 0.05, "critDamage": 1.5, "evasion": 0.05, "accuracy": 0.95 },
+      "traits": ["PROTECTOR", "RIGHTEOUS"],
+      "factionId": "village_council",
+      "element": "earth",
+      "inventory": ["hp_potion_small"],
+      "homeRegion": "region_village",
+      "spawnPosition": { "x": 320, "y": 320 }
+    },
+    {
+      "id": "wanderer",
+      "name": "Lữ Khách",
+      "gender": "Male",
+      "realm": "luyen_khi_4",
+      "stats": { "hp": 180, "mp": 90, "attack": 18, "defense": 16, "speed": 12, "critRate": 0.05, "critDamage": 1.5, "evasion": 0.05, "accuracy": 0.95 },
+      "traits": ["CUNNING"],
+      "factionId": "village_council",
+      "element": "wind",
+      "homeRegion": "region_village",
+      "spawnPosition": { "x": 256, "y": 192 }
+    },
+    {
+      "id": "demon_disciple",
+      "name": "Ma Giáo Đệ Tử",
+      "gender": "Male",
+      "realm": "luyen_khi_6",
+      "stats": { "hp": 220, "mp": 100, "attack": 22, "defense": 18, "speed": 14, "critRate": 0.08, "critDamage": 1.6, "evasion": 0.05, "accuracy": 0.92 },
+      "traits": ["BLOODTHIRSTY", "VINDICTIVE"],
+      "factionId": "demon_sect",
+      "element": "fire",
+      "homeRegion": "region_village",
+      "spawnPosition": { "x": 640, "y": 480 }
+    },
+    {
+      "id": "sect_disciple",
+      "name": "Thanh Vân Đệ Tử",
+      "gender": "Female",
+      "realm": "truc_co_1",
+      "stats": { "hp": 410, "mp": 175, "attack": 41, "defense": 33, "speed": 29, "critRate": 0.07, "critDamage": 1.5, "evasion": 0.05, "accuracy": 0.95 },
+      "traits": ["IRON_WILL"],
+      "factionId": "thanh_van_sect",
+      "element": "wind",
+      "skills": ["wind_blade", "wood_heal"],
+      "homeRegion": "region_village",
+      "spawnPosition": { "x": 576, "y": 288 }
+    },
+    {
+      "id": "village_child",
+      "name": "Tiểu Học Đồ",
+      "gender": "Female",
+      "realm": "luyen_khi_1",
+      "stats": { "hp": 120, "mp": 60, "attack": 12, "defense": 10, "speed": 12, "critRate": 0.02, "critDamage": 1.5, "evasion": 0.1, "accuracy": 0.95 },
+      "traits": ["COMPASSIONATE"],
+      "factionId": "village_council",
+      "element": "wood",
+      "homeRegion": "region_village",
+      "spawnPosition": { "x": 448, "y": 320 }
+    },
+    {
+      "id": "village_blacksmith",
+      "name": "Phương Thợ Rèn",
+      "gender": "Male",
+      "realm": "luyen_khi_5",
+      "stats": { "hp": 220, "mp": 70, "attack": 22, "defense": 24, "speed": 10, "critRate": 0.05, "critDamage": 1.5, "evasion": 0.03, "accuracy": 0.95 },
+      "traits": ["TOUGH"],
+      "factionId": "village_council",
+      "element": "fire",
+      "inventory": ["iron_sword", "leather_armor"],
+      "homeRegion": "region_village",
+      "spawnPosition": { "x": 192, "y": 320 }
+    }
+  ]
+}

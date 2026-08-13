@@ -1,0 +1,26 @@
+{
+  "dataVersion": 1,
+  "realms": [
+    {
+      "id": "luyen_khi",
+      "name": "Luyện Khí",
+      "layers": 9,
+      "baseStats": { "hp": 100, "mp": 50, "attack": 10, "defense": 8, "speed": 10 },
+      "statPerLayer": { "hp": 20, "mp": 10, "attack": 2, "defense": 2, "speed": 2 }
+    },
+    {
+      "id": "truc_co",
+      "name": "Trúc Cơ",
+      "layers": 3,
+      "baseStats": { "hp": 350, "mp": 150, "attack": 35, "defense": 28, "speed": 25 },
+      "statPerLayer": { "hp": 60, "mp": 25, "attack": 6, "defense": 5, "speed": 4 }
+    },
+    {
+      "id": "kim_dan",
+      "name": "Kim Đan",
+      "layers": 3,
+      "baseStats": { "hp": 700, "mp": 300, "attack": 70, "defense": 55, "speed": 40 },
+      "statPerLayer": { "hp": 120, "mp": 50, "attack": 12, "defense": 10, "speed": 7 }
+    }
+  ]
+}

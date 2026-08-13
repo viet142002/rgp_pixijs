@@ -1,0 +1,66 @@
+{
+  "dataVersion": 1,
+  "states": [
+    {
+      "id": "BLOOD_FEUD",
+      "name": "Huyết Cừu",
+      "modifiers": {
+        "aggression": 1.0,
+        "damageMultiplier": 1.3
+      },
+      "tags": ["combat", "social"]
+    },
+    {
+      "id": "DEBT_OF_GRATITUDE",
+      "name": "Ân Tình",
+      "modifiers": {
+        "loyalty": 0.5
+      },
+      "tags": ["social"]
+    },
+    {
+      "id": "INNER_DEMON",
+      "name": "Tâm Ma",
+      "modifiers": {
+        "accuracy": -0.2,
+        "critDamage": 0.1,
+        "damageMultiplier": 1.15
+      },
+      "tags": ["combat"]
+    },
+    {
+      "id": "BROKEN",
+      "name": "Tuyệt Vọng",
+      "modifiers": {
+        "cowardice": 0.5,
+        "damageMultiplier": 0.7
+      },
+      "tags": ["behavior"]
+    },
+    {
+      "id": "ENLIGHTENED",
+      "name": "Khai Ngộ",
+      "modifiers": {
+        "damageMultiplier": 1.1
+      },
+      "tags": ["combat"]
+    },
+    {
+      "id": "INJURED",
+      "name": "Bị Thương",
+      "modifiers": {
+        "speedMultiplier": 0.8,
+        "damageMultiplier": 0.9
+      },
+      "tags": ["combat"]
+    },
+    {
+      "id": "PROTECTED",
+      "name": "Được Hộ Vệ",
+      "modifiers": {
+        "defenseMultiplier": 1.2
+      },
+      "tags": ["defense"]
+    }
+  ]
+}
