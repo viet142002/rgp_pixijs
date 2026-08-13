@@ -22,6 +22,18 @@ import {
   initBattle, resolveAction, type BattleState, type ActionRequest,
 } from "./combat/battle.js";
 import {
+  applyRepChange, applyRepWithCascade, canJoinFaction, getRank, getRankLabel,
+  affinityFromRep, REP_DELTAS, type RepChange,
+} from "./faction/reputation.js";
+import {
+  migrateNpc, migrateFallennFactionMembers, checkPersonalBetrayal,
+  recruitNpc, type MigrationResult,
+} from "./faction/migration.js";
+import {
+  computeFactionStance, evaluateFactionPolitics, getAllStances,
+  type FactionStance,
+} from "./faction/politics.js";
+import {
   initFactionWar, recordCasualty, getActiveWars, isAtWar,
   decayWarIntensity, getWarIntensity,
 } from "./faction/war.js";
@@ -34,8 +46,24 @@ import {
   recruitNpc, type MigrationResult,
 } from "./faction/migration.js";
 import {
+  computeFactionStance, evaluateFactionPolitics, getAllStances,
+  type FactionStance,
+} from "./faction/politics.js";
+import {
   giveItem, takeItem, countItem, useItem, equipItem, getEquipmentBonus,
 } from "./items/items.js";
+import {
+  getDayPhase, advanceMinutes as advanceTimeMinutes, formatTime, isDaytime,
+} from "./world/time.js";
+import {
+  WEATHER_LIST, getWeatherEffect, tickWeather, rollWeather,
+} from "./world/weather.js";
+import {
+  generateTerrain, getTileAt, getTileEncounterRate, TILE_DEFS,
+} from "./world/terrain.js";
+import {
+  findPoiAt, enterPoi, listPoisInRegion,
+} from "./world/poi.js";
 import {
   meditate as meditateFn, attemptBreakthrough, expToNextLayer, breakthroughCost,
   type MeditationResult, type BreakthroughAttempt,
@@ -58,6 +86,7 @@ import {
   listShop, getBuyPrice, getSellPrice, buyItem, sellItem,
   type ShopResult,
 } from "./economy/shop.js";
+import { getNextStep as tutNextStep, completeStep as tutComplete, type TutorialStep } from "./tutorial/tutorial.js";
 
 export interface EngineConfig {
   seed: number;
@@ -95,7 +124,14 @@ export class Engine {
     }
 
     this.state = {
-      time: { day: 0, hour: 8, minute: 0 },
+      time: {
+        day: 0,
+        hour: 8,
+        minute: 0,
+        phase: "morning" as const,
+        weather: "clear" as const,
+        weatherDaysLeft: 3,
+      },
       tick: 0,
       currentRegion: player.currentRegion,
       player,
@@ -104,6 +140,7 @@ export class Engine {
       events: [],
       flags: {},
       factionWars: [],
+      tutorial: { currentIdx: 0, completed: [], done: false },
     };
 
     // Initial setup: a few relations to bootstrap social graph
@@ -159,13 +196,134 @@ export class Engine {
     }
     // War intensity slowly decays over time
     decayWarIntensity(this.state, 0.05);
+    // Faction politics daily evaluation
+    evaluateFactionPolitics(this.state, this.data, this.prng.world, this.state.time.day);
     return result.events;
   }
 
   checkEncounterAtPlayer(): boolean {
     const region = this.data.regions.get(this.state.currentRegion);
     if (!region) return false;
-    return checkEncounter(region.encounterRate, this.prng.world);
+    const baseRate = region.encounterRate;
+    // Apply weather modifier
+    const weatherEff = getWeatherEffect(this.state.time.weather);
+    return checkEncounter(baseRate * weatherEff.encounterMultiplier, this.prng.world);
+  }
+
+  // ============== Tile + POI + Weather ==============
+
+  /**
+   * Advance world time by minutes. Returns whether day changed (triggers weather roll).
+   */
+  advanceTime(minutes: number): { dayChanged: boolean } {
+    const r = advanceTimeMinutes(this.state.time, minutes);
+    if (r.dayChanged) {
+      // Roll weather when day changes
+      const w = tickWeather(this.state.time.weather, this.state.time.weatherDaysLeft, this.prng.world);
+      this.state.time.weather = w.weather;
+      this.state.time.weatherDaysLeft = w.weatherDaysLeft;
+    }
+    return r;
+  }
+
+  /**
+   * Move player by dx/dy. Returns whether encounter occurs (tile-based).
+   */
+  movePlayer(dx: number, dy: number): boolean {
+    this.state.player.position.x += dx;
+    this.state.player.position.y += dy;
+    // Check encounter via tile
+    const region = this.data.regions.get(this.state.currentRegion);
+    if (!region) return false;
+    const tile = getTileAt(
+      generateTerrain(this.seed, region.id, region.width, region.height),
+      Math.floor(this.state.player.position.x / region.tileSize),
+      Math.floor(this.state.player.position.y / region.tileSize)
+    );
+    const encounterRate = getTileEncounterRate(tile);
+    const weatherEff = getWeatherEffect(this.state.time.weather);
+    if (!tile) return false;
+    // Use deterministic checkEncounter
+    const effective = encounterRate * weatherEff.encounterMultiplier;
+    return checkEncounter(effective, this.prng.world);
+  }
+
+  /**
+   * Get current terrain tile at player position.
+   */
+  getCurrentTile(): string {
+    const region = this.data.regions.get(this.state.currentRegion);
+    if (!region) return "unknown";
+    const tile = getTileAt(
+      generateTerrain(this.seed, region.id, region.width, region.height),
+      Math.floor(this.state.player.position.x / region.tileSize),
+      Math.floor(this.state.player.position.y / region.tileSize)
+    );
+    return tile ?? "unknown";
+  }
+
+  /**
+   * Get terrain map for region (rendering/UI).
+   */
+  getTerrainMap(regionId: string): string[][] {
+    const region = this.data.regions.get(regionId);
+    if (!region) return [];
+    const map = generateTerrain(this.seed, regionId, region.width, region.height);
+    // Convert TerrainId to string for ease
+    return map.map((row) => row.map((t) => t as string));
+  }
+
+  /**
+   * Find POI at player's current tile.
+   */
+  findPoiHere(): import("./types.js").POIDef | null {
+    const region = this.data.regions.get(this.state.currentRegion);
+    if (!region) return null;
+    const tileX = Math.floor(this.state.player.position.x / region.tileSize);
+    const tileY = Math.floor(this.state.player.position.y / region.tileSize);
+    return findPoiAt(this.data, this.state.currentRegion, tileX, tileY);
+  }
+
+  /**
+   * Enter a POI by id.
+   */
+  enterPoi(poiId: string): { name: string; type: string; npcs: string[]; hasEncounter: boolean } | null {
+    const r = enterPoi(this.state, this.data, poiId);
+    if (!r) return null;
+    return {
+      name: r.po.name,
+      type: r.po.type,
+      npcs: r.po.npcs ?? [],
+      hasEncounter: !!r.po.encounterOnEnter && (this.state.time.phase === "night" || this.state.time.phase === "evening"),
+    };
+  }
+
+  /**
+   * List all POIs in current region.
+   */
+  listPoisInRegion(): import("./types.js").POIDef[] {
+    return listPoisInRegion(this.data, this.state.currentRegion);
+  }
+
+  /**
+   * Get current weather + effect.
+   */
+  getWeatherInfo() {
+    return {
+      weather: this.state.time.weather,
+      daysLeft: this.state.time.weatherDaysLeft,
+      effect: getWeatherEffect(this.state.time.weather),
+    };
+  }
+
+  /**
+   * Advance time + check weather (test helper).
+   */
+  testRollWeather() {
+    const w = rollWeather(this.prng.world);
+    this.state.time.weather = w.weather;
+    this.state.time.weatherDaysLeft = w.durationDays;
+    return w;
   }
 
   // ============== Player actions ==============
@@ -197,13 +355,17 @@ export class Engine {
     const npc = this.state.npcs.get(npcId);
     if (!npc || !npc.alive) return events;
 
-    // Trigger combat: player team vs enemy team (just this NPC for MVP)
-    const playerCombatant = npcToCombatant(this.state.player, 0, 0, 0);
-    const enemyCombatant = npcToCombatant(npc, 1, 0, 0);
+    // 3v3 team combat: player + nearby faction allies vs NPC + nearby allies
+    const playerTeam = buildCombatTeam(this, 0, [this.state.player]);
+    // Enemy team: target + allied NPCs (same faction, in same region)
+    const allies = [...this.state.npcs.values()]
+      .filter((n) => n.id !== npcId && n.alive && n.factionId === npc.factionId && n.homeRegion === npc.homeRegion)
+      .slice(0, 2);
+    const enemyTeam = buildCombatTeam(this, 1, [npc, ...allies]);
 
     this.battle = initBattle({
-      playerTeam: [playerCombatant],
-      enemyTeam: [enemyCombatant],
+      playerTeam,
+      enemyTeam,
       data: this.data,
       rng: this.prng.combat,
       day: this.state.time.day,
@@ -220,6 +382,8 @@ export class Engine {
       tick: this.state.tick,
       timestamp: Date.now(),
     });
+
+    this.fireTutorial("on_first_combat");
 
     return events;
   }
@@ -364,6 +528,7 @@ export class Engine {
     if (!canJoinFaction(this.state.player, factionId)) return false;
     applyRepChange(this.state.player, factionId, REP_DELTAS.joinedFaction, `join_${factionId}`, "player");
     this.state.player.factionRep[factionId] = 100;
+    this.fireTutorial("on_first_faction");
     return true;
   }
 
@@ -408,6 +573,20 @@ export class Engine {
   }
 
   /**
+   * Get stance for a single faction.
+   */
+  getFactionStance(factionId: string): FactionStance {
+    return computeFactionStance(this.state, this.data, factionId);
+  }
+
+  /**
+   * Get all factions' current stance.
+   */
+  getAllFactionStances(): Record<string, FactionStance> {
+    return getAllStances(this.state, this.data);
+  }
+
+  /**
    * Migrate NPC to a new faction.
    */
   migrateNpc(npcId: EntityId, newFactionId: string, reason: "faction_fallen" | "personal_betrayal" | "player_recruit" | "war_resolution" | "ideological_shift"): MigrationResult | null {
@@ -442,7 +621,9 @@ export class Engine {
    * Returns exp gained.
    */
   meditate(minutes: number = 60): MeditationResult {
-    return meditateFn(this.state, this.data, minutes);
+    const result = meditateFn(this.state, this.data, minutes);
+    this.fireTutorial("on_first_meditation");
+    return result;
   }
 
   /**
@@ -456,7 +637,15 @@ export class Engine {
    * Attempt breakthrough to next layer or next realm tier.
    */
   attemptBreakthrough(): BreakthroughAttempt {
-    return attemptBreakthrough(this.state, this.data, this.prng.world);
+    const result = attemptBreakthrough(this.state, this.data, this.prng.world);
+    this.fireTutorial("on_first_breakthrough");
+    if (result.success) {
+      const realmId = result.newRealm;
+      if (realmId === "linh_khi") this.fireTutorial("on_realm_linh_khi");
+      else if (realmId === "truc_co") this.fireTutorial("on_realm_truc_co");
+      else if (realmId === "kim_dan") this.fireTutorial("on_realm_kim_dan");
+    }
+    return result;
   }
 
   /**
@@ -479,6 +668,41 @@ export class Engine {
   getRealmDisplay(): string {
     const realm = this.data.realms.get(this.state.player.realm);
     return realm ? `${realm.name} ${this.state.player.realmLayer}/${realm.layers}` : "Không rõ";
+  }
+
+  // ============== Tutorial ==============
+
+  /**
+   * Fire tutorial trigger; returns the step to show (if any) or null.
+   * Caller should display it and call `completeTutorialStep` when dismissed.
+   */
+  fireTutorial(trigger: import("./tutorial/tutorial.js").TutorialTrigger): TutorialStep | null {
+    return tutNextStep(this.state, trigger);
+  }
+
+  /**
+   * Mark step as seen by player.
+   */
+  completeTutorialStep(stepId: string): void {
+    tutComplete(this.state, stepId);
+  }
+
+  /**
+   * Get count of pending tutorial steps.
+   */
+  getTutorialPending(): number {
+    return this.state.tutorial.completed.length === 0
+      ? 1
+      : [...this.state.tutorial.completed].length;
+  }
+
+  /**
+   * Skip tutorial entirely (for experienced players / debug).
+   */
+  skipTutorial(): void {
+    this.state.tutorial.done = true;
+    this.state.tutorial.currentIdx = 999;
+    this.state.tutorial.completed = ["*"];
   }
 
   // ============== Alchemy ==============
@@ -909,6 +1133,25 @@ function npcToCombatant(
     combo: 0,
     alive: true,
   };
+}
+
+/**
+ * Build a team of up to 3 combatants. First member goes to front row col 0,
+ * second to front col 1, third to back col 0. Remaining slots left empty.
+ */
+function buildCombatTeam(
+  _engine: Engine,
+  team: number,
+  members: (Player | NPC)[]
+): import("./types.js").Combatant[] {
+  const slots: { row: 0 | 1; col: 0 | 1 | 2 }[] = [
+    { row: 0, col: 0 },
+    { row: 0, col: 1 },
+    { row: 1, col: 0 },
+  ];
+  return members.slice(0, 3).map((m, idx) =>
+    npcToCombatant(m, team, slots[idx]!.row, slots[idx]!.col)
+  );
 }
 
 export function createEngine(config: EngineConfig): Engine {

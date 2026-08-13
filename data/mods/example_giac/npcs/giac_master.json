@@ -1,0 +1,10 @@
+{
+  "id": "giac_master",
+  "name": "Tu Tiên Giác Sư",
+  "factionId": "wandering",
+  "homeRegion": "region_village",
+  "element": "neutral",
+  "stats": { "hp": 100, "attack": 30, "defense": 15, "speed": 12 },
+  "personality": "calm",
+  "dialogueTree": null
+}

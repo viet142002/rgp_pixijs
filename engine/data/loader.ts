@@ -171,6 +171,8 @@ export interface ShopDef {
   factionDiscount?: Record<string, number>;
 }
 
+export type { POIDef } from "../types.js";
+
 export interface StaticData {
   traits: Map<string, Trait>;
   states: Map<string, State>;
@@ -186,6 +188,7 @@ export interface StaticData {
   quests: Map<string, QuestDef>;
   dialogues: Map<string, DialogueTree>;
   shops: Map<string, ShopDef>;
+  pois: Map<string, POIDef>;
   dataVersion: number;
 }
 
@@ -207,6 +210,7 @@ export async function loadStaticData(dataDir: string): Promise<StaticData> {
     questsRaw,
     dialoguesRaw,
     shopsRaw,
+    poisRaw,
   ] = await Promise.all([
     readJson<{ dataVersion: number; traits: Trait[] }>(join(dataDir, "traits.json")),
     readJson<{ dataVersion: number; states: State[] }>(join(dataDir, "states.json")),
@@ -221,6 +225,7 @@ export async function loadStaticData(dataDir: string): Promise<StaticData> {
     readJson<{ dataVersion: number; quests: QuestDef[] }>(join(dataDir, "quests.json")),
     readJson<{ dataVersion: number; trees: DialogueTree[] }>(join(dataDir, "dialogues.json")),
     readJson<{ dataVersion: number; shops: ShopDef[] }>(join(dataDir, "shops.json")),
+    readJson<{ dataVersion: number; pois: POIDef[] }>(join(dataDir, "pois.json")),
   ]);
 
   // Cross-reference validation
@@ -278,6 +283,9 @@ export async function loadStaticData(dataDir: string): Promise<StaticData> {
   const shopsMap = new Map<string, ShopDef>();
   for (const s of shopsRaw.shops ?? []) shopsMap.set(s.ownerId, s);
 
+  const poisMap = new Map<string, POIDef>();
+  for (const p of poisRaw.pois ?? []) poisMap.set(p.id, p);
+
   return {
     traits: traitsMap,
     states: statesMap,
@@ -293,6 +301,7 @@ export async function loadStaticData(dataDir: string): Promise<StaticData> {
     quests: questsMap,
     dialogues: dialoguesMap,
     shops: shopsMap,
+    pois: poisMap,
     dataVersion: npcsRaw.dataVersion, // use npcs as reference
   };
 }

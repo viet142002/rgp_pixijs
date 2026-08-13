@@ -146,7 +146,9 @@ export function createDefaultPlayer(): Player {
     cultivationExp: 0,
     stats: {
       hp: 120,
+      maxHp: 120,
       mp: 60,
+      maxMp: 60,
       attack: 12,
       defense: 10,
       speed: 12,
@@ -173,6 +175,8 @@ export function createDefaultPlayer(): Player {
     },
     element: "fire",
     questProgress: [],
+    titles: [],
+    flags: {},
   };
 }
 

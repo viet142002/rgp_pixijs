@@ -94,7 +94,9 @@ export function resolveAction(
 
   const actor = battle.combatants.find((c) => c.id === request.actorId);
   if (!actor || !actor.alive) {
-    return { battle, events: [makeEvent("COMBAT_ENDED", "system", [], { reason: "actor_dead" }, battle, [])] };
+    // Dead actor — advance turn to skip and check end
+    advanceTurn(battle);
+    return checkBattleEnd(battle, events, data, r);
   }
   if (battle.result) {
     return { battle, events };

@@ -1,0 +1,8 @@
+{
+  "id": "example_giac",
+  "name": "Tu Tiên Giác Mod (Example)",
+  "version": "0.1.0",
+  "author": "demo",
+  "description": "Thêm 1 NPC tu tiên giác + 1 quest hướng dẫn",
+  "dependencies": []
+}

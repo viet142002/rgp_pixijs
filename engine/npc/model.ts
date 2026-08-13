@@ -27,7 +27,12 @@ export function instantiateNpc(
 }
 
 export function materializeNpc(tpl: NPCTemplate, id: EntityId, spawnDay: number): NPC {
-  const stats: Stats = { ...tpl.stats };
+  const baseStats = { ...tpl.stats };
+  const stats: Stats = {
+    ...baseStats,
+    maxHp: (baseStats as Stats).maxHp ?? baseStats.hp,
+    maxMp: (baseStats as Stats).maxMp ?? baseStats.mp,
+  };
   return {
     id,
     name: tpl.name,

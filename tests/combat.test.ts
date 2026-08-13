@@ -142,17 +142,27 @@ describe("Combat", () => {
     engine.attackNpc("wanderer");
     expect(engine.battle).not.toBeNull();
     let turns = 0;
-    while (engine.battle && turns < 50) {
+    while (engine.battle && turns < 100) {
       const actor = engine.battle.combatants[engine.battle.currentActorIdx];
-      if (!actor) break;
+      if (!actor || !actor.alive) {
+        // advance past dead actor by calling defend (which costs AP but will not skip)
+        // actually safer: just find next alive and run a no-op via defend
+        const alive = engine.battle.combatants.find((c) => c.alive);
+        if (!alive) break;
+        // bump turn by action
+        engine.combatAction({actorId: alive.id, action: "defend"});
+        turns++;
+        continue;
+      }
       const targets = engine.battle.combatants.filter(
         (c: Combatant) => c.team !== actor.team && c.alive
       );
       if (targets.length === 0) break;
+      const target = [...targets].sort((a, b) => a.stats.hp - b.stats.hp)[0]!;
       engine.combatAction({
         actorId: actor.id,
         action: "attack",
-        targetId: targets[0]!.id,
+        targetId: target.id,
       });
       turns++;
     }

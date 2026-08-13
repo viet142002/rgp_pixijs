@@ -29,12 +29,12 @@ describe("World", () => {
   });
 
   it("formatTime works", () => {
-    const t = { day: 3, hour: 14, minute: 30 };
-    expect(formatTime(t)).toBe("Day 3, 14:30");
+    const t = { day: 3, hour: 14, minute: 30, phase: "noon" as const, weather: "clear" as const, weatherDaysLeft: 3 };
+    expect(formatTime(t)).toBe("Ngày 3, 14:30 (Trưa)");
   });
 
   it("advanceMinutes wraps correctly", () => {
-    const t = { day: 0, hour: 23, minute: 59 };
+    const t = { day: 0, hour: 23, minute: 59, phase: "night" as const, weather: "clear" as const, weatherDaysLeft: 3 };
     advanceMinutes(t, 5);
     expect(t.day).toBe(1);
     expect(t.hour).toBe(0);

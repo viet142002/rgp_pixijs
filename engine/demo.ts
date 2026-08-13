@@ -489,8 +489,227 @@ async function main(): Promise<void> {
   const discPrice = shopEngine.getBuyPrice("village_merchant", "iron_sword");
   console.log(`  Sắt Kiếm: gốc ${noDiscPrice} vàng → giảm giá ${discPrice} vàng (-${noDiscPrice - discPrice})`);
 
+  // ============== World foundation demo ==============
+
+  console.log("\n=== World Foundation (Tile / POI / Weather) Demo ===");
+  const worldEngine = createEngine({ seed: 12121, data });
+
+  console.log(`\n--- 39. Day/night + thời tiết ---`);
+  console.log(`  Ban đầu: ${formatTime(worldEngine.state.time)}, weather=${worldEngine.state.time.weather}`);
+  for (let i = 0; i < 12; i++) {
+    worldEngine.advanceTime(60 * 4); // 4h forward
+    console.log(`  +4h: ${formatTime(worldEngine.state.time)}, weather=${worldEngine.state.time.weather} (${worldEngine.getWeatherInfo().daysLeft} ngày còn)`);
+  }
+
+  console.log(`\n--- 40. Tile terrain tại vị trí player ---`);
+  console.log(`  Tile: ${worldEngine.getCurrentTile()}`);
+  console.log(`  Encounter rate: ${worldEngine.checkEncounterAtPlayer() ? "có" : "không"}`);
+
+  console.log(`\n--- 41. Render map 40x30 (rừng den) ---`);
+  const villageMap = worldEngine.getTerrainMap("region_village");
+  // Print 10-row sample
+  for (let y = 0; y < Math.min(8, villageMap.length); y++) {
+    const row = villageMap[y]!.slice(0, 40);
+    const condensed = row.map((t) => {
+      if (t === "grass") return ".";
+      if (t === "road") return "=";
+      if (t === "shrine") return "S";
+      if (t === "sand") return "s";
+      if (t === "forest") return "T";
+      if (t === "water") return "~";
+      if (t === "mountain") return "^";
+      if (t === "swamp") return "w";
+      if (t === "cave") return "C";
+      if (t === "ruin") return "R";
+      return "?";
+    }).join("");
+    console.log(`  ${condensed}`);
+  }
+
+  console.log(`\n--- 42. POIs trong vùng ---`);
+  for (const poi of worldEngine.listPoisInRegion()) {
+    console.log(`  ${poi.name.padEnd(28)} (${poi.type}) tại (${poi.position.x}, ${poi.position.y})`);
+  }
+
+  console.log(`\n--- 43. Đến POI ---`);
+  worldEngine.state.player.position = { x: 20 * 32, y: 15 * 32 };
+  console.log(`  Trước: tile=${worldEngine.getCurrentTile()}`);
+  const poi = worldEngine.findPoiHere();
+  if (poi) {
+    console.log(`  Tìm thấy POI: ${poi.name}`);
+    const info = worldEngine.enterPoi(poi.id);
+    console.log(`  Loại: ${info?.type}, NPC ở đây: ${info?.npcs.join(", ") || "(không)"}`);
+    console.log(`  Có cấn gặp (đêm): ${info?.hasEncounter}`);
+  }
+
+  console.log(`\n--- 44. Weather effect ---`);
+  worldEngine.state.time.weather = "storm";
+  const stormEff = worldEngine.getWeatherInfo().effect;
+  console.log(`  Storm: encounter x${stormEff.encounterMultiplier}, regen ${stormEff.hpRegenPerHour}/h, speed x${stormEff.speedMultiplier}`);
+  worldEngine.state.time.weather = "fog";
+  const fogEff = worldEngine.getWeatherInfo().effect;
+  console.log(`  Fog: encounter x${fogEff.encounterMultiplier} (tăng!), regen ${fogEff.hpRegenPerHour}/h`);
+
+  console.log("\n========= Batch 2: Combat 3v3 + AI + Faction Politics =========");
+
+  // 45. Faction stance snapshot
+  console.log(`\n--- 45. Faction stance ban đầu ---`);
+  const stances = worldEngine.getAllFactionStances();
+  for (const [fid, stance] of Object.entries(stances)) {
+    console.log(`  ${fid.padEnd(20)} → ${stance}`);
+  }
+
+  // 46. 3v3 combat: attack wanderer → triggers 3-enemy team
+  console.log(`\n--- 46. Combat 3v3 vs wanderer (player + allies vs target + faction allies) ---`);
+  worldEngine.state.player.stats.attack = 200;
+  worldEngine.state.player.stats.hp = 1000;
+  worldEngine.attackNpc("wanderer");
+  if (worldEngine.battle) {
+    const enemyTeam = worldEngine.battle.combatants.filter((c) => c.team === 1);
+    const playerTeam = worldEngine.battle.combatants.filter((c) => c.team === 0);
+    console.log(`  Player team (${playerTeam.length}): ${playerTeam.map((c) => c.name).join(", ")}`);
+    console.log(`  Enemy team (${enemyTeam.length}): ${enemyTeam.map((c) => c.name).join(", ")}`);
+    console.log(`  Formation: enemy ở [(${enemyTeam.map((c) => `${c.row},${c.col}`).join(") (")})]`);
+    // Run 10 attacks to show turn order
+    for (let i = 0; i < 10 && worldEngine.battle; i++) {
+      const actor = worldEngine.battle.combatants[worldEngine.battle.currentActorIdx];
+      if (!actor || !actor.alive) break;
+      const targets = worldEngine.battle.combatants.filter((c) => c.team !== actor.team && c.alive);
+      if (targets.length === 0) break;
+      const target = [...targets].sort((a, b) => a.stats.hp - b.stats.hp)[0]!;
+      console.log(`  T${i} ${actor.name} → ${target.name} (${target.stats.hp}HP)`);
+      worldEngine.combatAction({ actorId: actor.id, action: "attack", targetId: target.id });
+    }
+    // Force end with defend loop, skip dead actors
+    let forced = 0;
+    while (worldEngine.battle && forced < 100) {
+      const a = worldEngine.battle.combatants[worldEngine.battle.currentActorIdx];
+      if (!a || !a.alive) {
+        const alive = worldEngine.battle.combatants.find((c) => c.alive);
+        if (!alive) break;
+        worldEngine.combatAction({ actorId: alive.id, action: "defend" });
+        forced++;
+        continue;
+      }
+      const tg = worldEngine.battle.combatants.filter((c) => c.team !== a.team && c.alive);
+      if (tg.length === 0) break;
+      const t2 = [...tg].sort((x, y) => x.stats.hp - y.stats.hp)[0]!;
+      worldEngine.combatAction({ actorId: a.id, action: "attack", targetId: t2.id });
+      forced++;
+    }
+    console.log(`  Kết quả: ${worldEngine.lastBattleResult} sau ${forced} lượt`);
+  }
+
+  // 47. Faction stance changes after combat
+  console.log(`\n--- 47. Faction stance sau combat (reputation giảm) ---`);
+  const stances2 = worldEngine.getAllFactionStances();
+  for (const [fid, stance] of Object.entries(stances2)) {
+    if (stance !== stances[fid]) {
+      console.log(`  ${fid.padEnd(20)} ${stances[fid]} → ${stance}`);
+    }
+  }
+
+  // 48. Faction politics tick
+  console.log(`\n--- 48. Politics tick (10 ngày) ---`);
+  worldEngine.giveRep("thanh_van_sect", 60, "demo");
+  console.log(`  Đã +60 rep Thanh Vân → stance = ${worldEngine.getFactionStance("thanh_van_sect")}`);
+  for (let i = 0; i < 1440 * 10; i++) worldEngine.tickWorld();
+  console.log(`  Sau 10 ngày: rep Thanh Vân = ${worldEngine.getPlayerRep("thanh_van_sect")} (defensive +1/ngày)`);
+  console.log(`  Stances hiện tại:`);
+  for (const [fid, stance] of Object.entries(worldEngine.getAllFactionStances())) {
+    console.log(`    ${fid.padEnd(20)} → ${stance}`);
+  }
+
+  console.log("\n========= Batch 3: Tutorial + Modding =========");
+
+  // 49. Tutorial state
+  console.log(`\n--- 49. Tutorial state ban đầu ---`);
+  console.log(`  done=${worldEngine.state.tutorial.done}, completed=${worldEngine.state.tutorial.completed.length}`);
+  const welcome = worldEngine.fireTutorial("on_start");
+  console.log(`  on_start → step: ${welcome?.title} / ${welcome?.body}`);
+
+  // 50. Tutorial progression
+  console.log(`\n--- 50. Tutorial progression ---`);
+  worldEngine.completeTutorialStep("welcome");
+  console.log(`  Sau complete("welcome"): completed=${worldEngine.state.tutorial.completed.length}`);
+  const combatStep = worldEngine.fireTutorial("on_first_combat");
+  console.log(`  on_first_combat → ${combatStep?.title}`);
+
+  // 51. Mod loader
+  console.log(`\n--- 51. Mod loader ---`);
+  const { loadMods, applyMods, validateModDependencies, topoSortMods } = await import("./modding/loader.js");
+  const mods = loadMods(join(DATA_DIR, "mods"));
+  console.log(`  Mods tìm thấy: ${mods.length}`);
+  for (const m of mods) console.log(`    - ${m.manifest.id} v${m.manifest.version}: ${m.manifest.name}`);
+  const missing = validateModDependencies(mods);
+  console.log(`  Missing deps: ${missing.length === 0 ? "(none)" : missing.join(", ")}`);
+  const sorted = topoSortMods(mods);
+  console.log(`  Topo order: ${sorted.map((m) => m.manifest.id).join(" → ")}`);
+  const merged = applyMods(data, sorted);
+  console.log(`  Base npcTemplates: ${data.npcTemplates.size}, merged: ${merged.npcTemplates.size} (+${merged.npcTemplates.size - data.npcTemplates.size})`);
+
+  // 52. Onboarding quest chain
+  console.log(`\n--- 52. Onboarding quests ---`);
+  const { ensureOnboardingQuests } = await import("./tutorial/onboarding.js");
+  const before = worldEngine.state.player.questProgress.length;
+  const r = ensureOnboardingQuests(worldEngine.state, data, worldEngine.state.player.id);
+  console.log(`  Đã thêm ${r.added.length} quests (trước: ${before}, sau: ${worldEngine.state.player.questProgress.length})`);
+  for (const q of r.added) console.log(`    + ${q}`);
+
+  console.log("\n========= Batch 4: Endgame + Tooling =========");
+
+  // 53. Tribulation
+  console.log(`\n--- 53. Thiên Kiếp ---`);
+  const { generateTribulation, canChallengeTribulation, runTribulation, listAvailableSecretBosses } = await import("./endgame/tribulation.js");
+  console.log(`  Realm hiện tại: ${worldEngine.state.player.realm}, có thể độ kiếp: ${canChallengeTribulation(worldEngine.state, data)}`);
+  worldEngine.state.player.realm = "kim_dan";
+  worldEngine.state.player.stats.maxHp = 99999;
+  worldEngine.state.player.stats.hp = 99999;
+  worldEngine.state.player.stats.maxMp = 99999;
+  worldEngine.state.player.stats.mp = 99999;
+  console.log(`  Sau khi lên Kim Đan + max HP: có thể độ kiếp: ${canChallengeTribulation(worldEngine.state, data)}`);
+  const waves = generateTribulation(worldEngine.state);
+  console.log(`  Sóng: ${waves.length} (đầu ${waves[0]?.damage} dmg, cuối ${waves[waves.length-1]?.damage} dmg)`);
+  const tribRng = { value: 0, state: 12345 };
+  const tribResult = runTribulation(worldEngine.state, data, tribRng);
+  console.log(`  Kết quả: ascension=${tribResult.ascension}, rewards: ${tribResult.events.filter((e) => e.type === "TRIBULATION_WAVE").length} waves`);
+  console.log(`  Player flag: ascended=${worldEngine.state.player.flags["ascended"]}, titles: ${worldEngine.state.player.titles.join(", ")}`);
+
+  // 54. Legendary crafting
+  console.log(`\n--- 54. Legendary crafting ---`);
+  const { LEGENDARY_RECIPES, canCraftLegendary, craftLegendary } = await import("./endgame/legendary.js");
+  for (const rec of LEGENDARY_RECIPES) {
+    const check = canCraftLegendary(worldEngine.state, data, rec);
+    console.log(`  ${rec.id}: ok=${check.ok}${check.ok ? "" : " (" + check.reasons.join("; ") + ")"}`);
+  }
+  worldEngine.state.player.inventory.push(
+    { itemId: "thien_kinh_iron", quantity: 2 },
+    { itemId: "cuu_chau_thuy_tinh", quantity: 2 },
+  );
+  const recipe = LEGENDARY_RECIPES[0]!;
+  const craftRng = { value: 0.01, state: 77777 };
+  const craftResult = craftLegendary(worldEngine.state, recipe, craftRng);
+  console.log(`  Craft ${recipe.name}: quality=${craftResult.quality}, item=${craftResult.resultItem ?? "(failed)"}`);
+
+  // 55. Secret bosses
+  console.log(`\n--- 55. Secret bosses ---`);
+  worldEngine.state.player.factionRep["demon_sect"] = -80;
+  worldEngine.state.time.phase = "night";
+  const bosses = listAvailableSecretBosses(worldEngine.state);
+  console.log(`  Available: ${bosses.join(", ") || "(none)"}`);
+
+  // 56. Inspector + Scenarios
+  console.log(`\n--- 56. Inspector ---`);
+  const { fullReport, saveSnapshot } = await import("./tooling/inspector.js");
+  const { SCENARIOS, listScenarios, applyScenario } = await import("./tooling/scenarios.js");
+  console.log(`  Snapshot: ${saveSnapshot(worldEngine)}`);
+  console.log(`  Scenarios: ${listScenarios().length}`);
+  for (const line of listScenarios()) console.log(`    ${line}`);
+  applyScenario(worldEngine, "war_zone");
+  console.log(`  Sau war_zone: wars active = ${worldEngine.state.factionWars.filter((w) => w.active).length}`);
+
   console.log("\n=== Demo complete — Tu Tiên Bát Hoang Engine ===");
-  console.log("Hệ thống: combat / hatred / faction / reputation / war / migration / cultivation / alchemy / dual cultivation / items / equipment / quests / dialogue / shop / save");
+  console.log("Hệ thống: combat 3v3 + formation + AOE / hatred / faction politics / reputation / war / migration / cultivation / alchemy / dual cultivation / items / equipment / quests / dialogue / shop / tile map / POI / day-night / weather / save / tutorial / modding / tribulation / legendary crafting / secret bosses / inspector / scenarios");
 }
 
 main().catch((err) => {

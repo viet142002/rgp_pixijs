@@ -33,7 +33,9 @@ export interface Region {
 
 export interface Stats {
   hp: number;
+  maxHp: number;
   mp: number;
+  maxMp: number;
   attack: number;
   defense: number;
   speed: number;
@@ -41,6 +43,13 @@ export interface Stats {
   critDamage: number;
   evasion: number;
   accuracy: number;
+}
+
+/**
+ * Helper: derive maxHp/maxMp from hp/mp when not provided.
+ */
+export function withMax(stats: Omit<Stats, "maxHp" | "maxMp">): Stats {
+  return { ...stats, maxHp: stats.hp, maxMp: stats.mp };
 }
 
 export interface StatsInit {
@@ -61,10 +70,33 @@ export type ElementId = "fire" | "water" | "wind" | "lightning" | "earth" | "woo
 
 // ============== Time ==============
 
+export type DayPhase = "dawn" | "morning" | "noon" | "afternoon" | "evening" | "night";
+
+export type WeatherId = "clear" | "cloudy" | "rain" | "storm" | "fog" | "snow";
+
 export interface WorldTime {
   day: number;
   hour: number;
   minute: number;
+  phase: DayPhase;
+  weather: WeatherId;
+  weatherDaysLeft: number; // days remaining for current weather
+}
+
+// ============== World Tile ==============
+
+export type TerrainId = "grass" | "forest" | "water" | "mountain" | "road" | "sand" | "swamp" | "cave" | "ruin" | "shrine";
+
+export interface POIDef {
+  id: string;
+  name: string;
+  regionId: string;
+  position: { x: number; y: number }; // tile coords
+  type: "shrine" | "cave" | "ruin" | "market" | "camp" | "temple";
+  description: string;
+  npcs?: string[]; // NPC ids stationed here
+  encounterOnEnter?: string; // NPC id to fight if entered at night, etc.
+  cultivationBonus?: number; // meditation bonus in safe POI
 }
 
 // ============== Relations ==============
@@ -198,6 +230,8 @@ export interface Player {
   factionRep: Record<string, number>; // factionId → rep
   element: ElementId;
   questProgress: import("./quest/quest.js").QuestProgress[];
+  titles: string[];
+  flags: Record<string, unknown>;
 }
 
 // ============== Combat ==============
@@ -320,6 +354,7 @@ export interface EngineState {
   events: DelayedEvent[];
   flags: Record<string, unknown>;
   factionWars: FactionWarState[];
+  tutorial: { currentIdx: number; completed: string[]; done: boolean };
 }
 
 export type FactionRank =

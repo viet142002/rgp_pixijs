@@ -1,0 +1,96 @@
+{
+  "dataVersion": 1,
+  "pois": [
+    {
+      "id": "village_shrine",
+      "name": "Thổ Thần Miếu",
+      "regionId": "region_village",
+      "position": { "x": 20, "y": 15 },
+      "type": "shrine",
+      "description": "Miếu nhỏ thờ thổ thần, nơi dân làng hay đến cầu bình an.",
+      "npcs": ["village_elder"],
+      "cultivationBonus": 5
+    },
+    {
+      "id": "village_market",
+      "name": "Trấn Thị",
+      "regionId": "region_village",
+      "position": { "x": 25, "y": 10 },
+      "type": "market",
+      "description": "Khu chợ sầm uất nhất trấn.",
+      "npcs": ["village_merchant"],
+      "cultivationBonus": 0
+    },
+    {
+      "id": "blacksmith_shop",
+      "name": "Phương Lò",
+      "regionId": "region_village",
+      "position": { "x": 8, "y": 20 },
+      "type": "market",
+      "description": "Lò rèn của Phương thợ rèn.",
+      "npcs": ["phuong_blacksmith"],
+      "cultivationBonus": 0
+    },
+    {
+      "id": "forest_camp",
+      "name": "Sơn Nhân Trại",
+      "regionId": "region_forest",
+      "position": { "x": 30, "y": 25 },
+      "type": "camp",
+      "description": "Trại tạm của thợ săn và lữ khách trong rừng.",
+      "npcs": ["forest_hunter"],
+      "encounterOnEnter": "forest_bandit",
+      "cultivationBonus": -5
+    },
+    {
+      "id": "bandit_lair",
+      "name": "Sơn Tặc Động",
+      "regionId": "region_forest",
+      "position": { "x": 55, "y": 40 },
+      "type": "cave",
+      "description": "Sào huyệt bọn cướp rừng. Khói lửa mờ ảo trong động.",
+      "npcs": ["forest_bandit_leader", "forest_bandit"],
+      "cultivationBonus": -10
+    },
+    {
+      "id": "abandoned_shrine",
+      "name": "Lạc Tuyền Miếu",
+      "regionId": "region_forest",
+      "position": { "x": 15, "y": 50 },
+      "type": "ruin",
+      "description": "Miếu cổ bị bỏ hoang, đồn có yêu khí.",
+      "encounterOnEnter": "demon_scout",
+      "cultivationBonus": 0
+    },
+    {
+      "id": "thanh_van_main_gate",
+      "name": "Thanh Vân Sơn Môn",
+      "regionId": "region_sect_main",
+      "position": { "x": 25, "y": 5 },
+      "type": "shrine",
+      "description": "Đại môn Thanh Vân Môn, nơi tiếp đón đệ tử.",
+      "npcs": ["thanh_van_patrol"],
+      "cultivationBonus": 10
+    },
+    {
+      "id": "thanh_van_meditation_hall",
+      "name": "Tĩnh Tâm Đường",
+      "regionId": "region_sect_main",
+      "position": { "x": 25, "y": 20 },
+      "type": "temple",
+      "description": "Đường tu luyện chính của Thanh Vân Môn.",
+      "cultivationBonus": 20
+    },
+    {
+      "id": "demon_valley_altar",
+      "name": "Ma Tổ Đàn",
+      "regionId": "region_demon_valley",
+      "position": { "x": 25, "y": 25 },
+      "type": "ruin",
+      "description": "Đàn tế ma tổ. Khí tức tà ác ngút trời.",
+      "npcs": ["demon_scout", "demon_disciple"],
+      "encounterOnEnter": "demon_scout",
+      "cultivationBonus": -15
+    }
+  ]
+}

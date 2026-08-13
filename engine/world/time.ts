@@ -2,14 +2,27 @@
  * World time management.
  */
 
-import type { WorldTime } from "../types.js";
+import type { WorldTime, DayPhase } from "../types.js";
 
 export const MINUTES_PER_HOUR = 60;
 export const HOURS_PER_DAY = 24;
 export const MINUTES_PER_DAY = MINUTES_PER_HOUR * HOURS_PER_DAY;
 
 /**
- * Advance world time by N minutes. Returns whether day changed.
+ * Get current phase of day.
+ * dawn 5-7, morning 7-11, noon 11-13, afternoon 13-17, evening 17-21, night 21-5.
+ */
+export function getDayPhase(hour: number): DayPhase {
+  if (hour >= 5 && hour < 7) return "dawn";
+  if (hour >= 7 && hour < 11) return "morning";
+  if (hour >= 11 && hour < 13) return "noon";
+  if (hour >= 13 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 21) return "evening";
+  return "night";
+}
+
+/**
+ * Advance world time by N minutes. Updates phase. Returns whether day changed.
  */
 export function advanceMinutes(time: WorldTime, minutes: number): { dayChanged: boolean } {
   let totalMin = time.day * MINUTES_PER_DAY + time.hour * MINUTES_PER_HOUR + time.minute + minutes;
@@ -22,27 +35,26 @@ export function advanceMinutes(time: WorldTime, minutes: number): { dayChanged: 
   time.day = newDay;
   time.hour = newHour;
   time.minute = newMinute;
+  time.phase = getDayPhase(newHour);
 
   return { dayChanged };
 }
 
 /**
- * Format time as "Day X, HH:MM"
+ * Format time as "Day X, HH:MM (phase)".
  */
 export function formatTime(time: WorldTime): string {
   const hh = String(time.hour).padStart(2, "0");
   const mm = String(time.minute).padStart(2, "0");
-  return `Day ${time.day}, ${hh}:${mm}`;
-}
-
-/**
- * Get current phase of day (0=morning, 1=noon, 2=evening, 3=night).
- */
-export function getDayPhase(hour: number): "morning" | "noon" | "evening" | "night" {
-  if (hour >= 5 && hour < 12) return "morning";
-  if (hour >= 12 && hour < 17) return "noon";
-  if (hour >= 17 && hour < 21) return "evening";
-  return "night";
+  const phaseVN: Record<DayPhase, string> = {
+    dawn: "Bình Minh",
+    morning: "Sáng",
+    noon: "Trưa",
+    afternoon: "Chiều",
+    evening: "Tối",
+    night: "Đêm",
+  };
+  return `Ngày ${time.day}, ${hh}:${mm} (${phaseVN[time.phase]})`;
 }
 
 /**
@@ -52,4 +64,11 @@ export function compareTime(a: WorldTime, b: WorldTime): number {
   const aTotal = a.day * MINUTES_PER_DAY + a.hour * MINUTES_PER_HOUR + a.minute;
   const bTotal = b.day * MINUTES_PER_DAY + b.hour * MINUTES_PER_HOUR + b.minute;
   return aTotal - bTotal;
+}
+
+/**
+ * Is it daytime (safe to travel)?
+ */
+export function isDaytime(hour: number): boolean {
+  return hour >= 6 && hour < 20;
 }

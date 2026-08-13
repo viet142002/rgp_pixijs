@@ -25,17 +25,24 @@ describe("Hatred Propagation", () => {
     // Kill wanderer via combat
     engine.attackNpc("wanderer");
     let turns = 0;
-    while (engine.battle && turns < 50) {
+    while (engine.battle && turns < 100) {
       const actor = engine.battle.combatants[engine.battle.currentActorIdx];
-      if (!actor) break;
+      if (!actor || !actor.alive) {
+        const alive = engine.battle.combatants.find((c) => c.alive);
+        if (!alive) break;
+        engine.combatAction({actorId: alive.id, action: "defend"});
+        turns++;
+        continue;
+      }
       const targets = engine.battle.combatants.filter(
         (c: import("../engine/types.js").Combatant) => c.team !== actor.team && c.alive
       );
       if (targets.length === 0) break;
+      const target = [...targets].sort((a, b) => a.stats.hp - b.stats.hp)[0]!;
       engine.combatAction({
         actorId: actor.id,
         action: "attack",
-        targetId: targets[0]!.id,
+        targetId: target.id,
       });
       turns++;
     }
@@ -81,17 +88,24 @@ describe("Hatred Propagation", () => {
 
     engine.attackNpc("village_guard");
     let turns = 0;
-    while (engine.battle && turns < 50) {
+    while (engine.battle && turns < 100) {
       const actor = engine.battle.combatants[engine.battle.currentActorIdx];
-      if (!actor) break;
+      if (!actor || !actor.alive) {
+        const alive = engine.battle.combatants.find((c) => c.alive);
+        if (!alive) break;
+        engine.combatAction({actorId: alive.id, action: "defend"});
+        turns++;
+        continue;
+      }
       const targets = engine.battle.combatants.filter(
         (c: import("../engine/types.js").Combatant) => c.team !== actor.team && c.alive
       );
       if (targets.length === 0) break;
+      const target = [...targets].sort((a, b) => a.stats.hp - b.stats.hp)[0]!;
       engine.combatAction({
         actorId: actor.id,
         action: "attack",
-        targetId: targets[0]!.id,
+        targetId: target.id,
       });
       turns++;
     }
