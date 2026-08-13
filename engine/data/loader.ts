@@ -49,9 +49,13 @@ export interface ItemDef {
   name: string;
   type: "consumable" | "weapon" | "armor" | "material" | "quest";
   rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
+  stackable?: boolean;
+  maxStack?: number;
+  slot?: string;
   effect?: Record<string, unknown>;
   statBonus?: Record<string, number>;
   value: number;
+  tags?: string[];
 }
 
 export interface NPCTemplate {
@@ -82,6 +86,91 @@ export interface RegionDef {
   isSafeZone: boolean;
 }
 
+export interface QuestObj {
+  type: "kill" | "collect" | "talk" | "deliver" | "explore" | "survive";
+  target: string;
+  quantity: number;
+  description: string;
+}
+
+export interface QuestReward {
+  exp?: number;
+  gold?: number;
+  items?: { itemId: string; quantity: number }[];
+  factionRep?: { factionId: string; delta: number }[];
+  cultivationExp?: number;
+}
+
+export interface QuestPrereq {
+  factionRepMin?: Record<string, number>;
+  questCompleted?: string[];
+}
+
+export interface QuestDef {
+  id: string;
+  name: string;
+  description: string;
+  giver?: string;
+  objectives: QuestObj[];
+  rewards: QuestReward;
+  prereq?: QuestPrereq;
+  failureOnRepBelow?: Record<string, number>;
+}
+
+export interface DialogueChoice {
+  text: string;
+  next: string;
+  condition?: {
+    factionRepMin?: Record<string, number>;
+    factionRepMax?: Record<string, number>;
+    affinityMin?: Record<string, number>;
+    affinityMax?: Record<string, number>;
+    questCompleted?: string[];
+    questActive?: string[];
+    gold?: number;
+  };
+}
+
+export interface DialogueNode {
+  id: string;
+  speaker: string;
+  text: string;
+  choices?: DialogueChoice[];
+  effects?: {
+    giveItem?: { itemId: string; quantity: number }[];
+    takeItem?: { itemId: string; quantity: number }[];
+    factionRep?: { factionId: string; delta: number }[];
+    startQuest?: string[];
+    completeQuest?: string[];
+    affinity?: { npcId: string; delta: number; symmetric?: boolean }[];
+    gold?: number;
+    cultivationExp?: number;
+  };
+  next?: string;
+  isEnd?: boolean;
+}
+
+export interface DialogueTree {
+  id: string;
+  rootNode: string;
+  nodes: Record<string, DialogueNode>;
+}
+
+export interface ShopItem {
+  itemId: string;
+  stock: number;
+  minRep?: Record<string, number>;
+}
+
+export interface ShopDef {
+  ownerId: string;
+  region: string;
+  inventory: ShopItem[];
+  buyMultiplier: number;
+  sellMultiplier: number;
+  factionDiscount?: Record<string, number>;
+}
+
 export interface StaticData {
   traits: Map<string, Trait>;
   states: Map<string, State>;
@@ -94,6 +183,9 @@ export interface StaticData {
   items: Map<string, ItemDef>;
   npcTemplates: Map<string, NPCTemplate>;
   regions: Map<string, RegionDef>;
+  quests: Map<string, QuestDef>;
+  dialogues: Map<string, DialogueTree>;
+  shops: Map<string, ShopDef>;
   dataVersion: number;
 }
 
@@ -112,6 +204,9 @@ export async function loadStaticData(dataDir: string): Promise<StaticData> {
     itemsRaw,
     npcsRaw,
     regionsRaw,
+    questsRaw,
+    dialoguesRaw,
+    shopsRaw,
   ] = await Promise.all([
     readJson<{ dataVersion: number; traits: Trait[] }>(join(dataDir, "traits.json")),
     readJson<{ dataVersion: number; states: State[] }>(join(dataDir, "states.json")),
@@ -123,6 +218,9 @@ export async function loadStaticData(dataDir: string): Promise<StaticData> {
     readJson<{ dataVersion: number; items: ItemDef[] }>(join(dataDir, "items.json")),
     readJson<{ dataVersion: number; templates: NPCTemplate[] }>(join(dataDir, "npcs.json")),
     readJson<{ dataVersion: number; regions: RegionDef[] }>(join(dataDir, "regions.json")),
+    readJson<{ dataVersion: number; quests: QuestDef[] }>(join(dataDir, "quests.json")),
+    readJson<{ dataVersion: number; trees: DialogueTree[] }>(join(dataDir, "dialogues.json")),
+    readJson<{ dataVersion: number; shops: ShopDef[] }>(join(dataDir, "shops.json")),
   ]);
 
   // Cross-reference validation
@@ -171,6 +269,15 @@ export async function loadStaticData(dataDir: string): Promise<StaticData> {
   const regionsMap = new Map<string, RegionDef>();
   for (const r of regionsRaw.regions) regionsMap.set(r.id, r);
 
+  const questsMap = new Map<string, QuestDef>();
+  for (const q of questsRaw.quests ?? []) questsMap.set(q.id, q);
+
+  const dialoguesMap = new Map<string, DialogueTree>();
+  for (const t of dialoguesRaw.trees ?? []) dialoguesMap.set(t.id, t);
+
+  const shopsMap = new Map<string, ShopDef>();
+  for (const s of shopsRaw.shops ?? []) shopsMap.set(s.ownerId, s);
+
   return {
     traits: traitsMap,
     states: statesMap,
@@ -183,6 +290,9 @@ export async function loadStaticData(dataDir: string): Promise<StaticData> {
     items: itemsMap,
     npcTemplates: npcTemplatesMap,
     regions: regionsMap,
+    quests: questsMap,
+    dialogues: dialoguesMap,
+    shops: shopsMap,
     dataVersion: npcsRaw.dataVersion, // use npcs as reference
   };
 }

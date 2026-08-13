@@ -6,7 +6,9 @@
       "name": "Đan Dược Khôi Phục (Nhỏ)",
       "type": "consumable",
       "rarity": "common",
-      "effect": { "heal": { "type": "flat", "value": 50 } },
+      "stackable": true,
+      "maxStack": 99,
+      "effect": { "heal": 50 },
       "value": 10
     },
     {
@@ -14,40 +16,228 @@
       "name": "Đan Dược Khôi Phục (Vừa)",
       "type": "consumable",
       "rarity": "common",
-      "effect": { "heal": { "type": "flat", "value": 150 } },
+      "stackable": true,
+      "maxStack": 99,
+      "effect": { "heal": 150 },
       "value": 30
+    },
+    {
+      "id": "hp_potion_large",
+      "name": "Đan Dược Khôi Phục (Lớn)",
+      "type": "consumable",
+      "rarity": "uncommon",
+      "stackable": true,
+      "maxStack": 99,
+      "effect": { "heal": 500 },
+      "value": 80
     },
     {
       "id": "mp_potion_small",
       "name": "Linh Dược Bổ Sung (Nhỏ)",
       "type": "consumable",
       "rarity": "common",
-      "effect": { "restoreMp": { "type": "flat", "value": 30 } },
+      "stackable": true,
+      "maxStack": 99,
+      "effect": { "restoreMp": 30 },
       "value": 12
+    },
+    {
+      "id": "mp_potion_large",
+      "name": "Linh Dược Bổ Sung (Lớn)",
+      "type": "consumable",
+      "rarity": "uncommon",
+      "stackable": true,
+      "maxStack": 99,
+      "effect": { "restoreMp": 120 },
+      "value": 50
     },
     {
       "id": "antidote",
       "name": "Giải Độc Đan",
       "type": "consumable",
       "rarity": "common",
+      "stackable": true,
+      "maxStack": 99,
       "effect": { "dispell": ["POISON", "BURN"] },
       "value": 15
+    },
+    {
+      "id": "qi_recovery_pill",
+      "name": "Tụ Khí Đan",
+      "type": "consumable",
+      "rarity": "uncommon",
+      "stackable": true,
+      "maxStack": 99,
+      "effect": { "cultivationExp": 50 },
+      "value": 100
+    },
+    {
+      "id": "breakthrough_pill_minor",
+      "name": "Phá Cảnh Đan (Hạ)",
+      "type": "consumable",
+      "rarity": "rare",
+      "stackable": true,
+      "maxStack": 20,
+      "effect": { "breakthroughBonus": 15 },
+      "value": 500
+    },
+    {
+      "id": "breakthrough_pill_major",
+      "name": "Phá Cảnh Đan (Thượng)",
+      "type": "consumable",
+      "rarity": "epic",
+      "stackable": true,
+      "maxStack": 10,
+      "effect": { "breakthroughBonus": 40 },
+      "value": 2000
+    },
+    {
+      "id": "qi_stabilizing_tea",
+      "name": "Tâm Tỏa Trà",
+      "type": "consumable",
+      "rarity": "uncommon",
+      "stackable": true,
+      "maxStack": 99,
+      "effect": { "qiDeviationResist": 20 },
+      "value": 200
     },
     {
       "id": "iron_sword",
       "name": "Sắt Kiếm",
       "type": "weapon",
       "rarity": "common",
+      "stackable": false,
+      "slot": "weapon",
       "statBonus": { "attack": 8 },
       "value": 50
+    },
+    {
+      "id": "jade_blade",
+      "name": "Ngọc Kiếm",
+      "type": "weapon",
+      "rarity": "uncommon",
+      "stackable": false,
+      "slot": "weapon",
+      "statBonus": { "attack": 18, "critRate": 0.05 },
+      "value": 200
+    },
+    {
+      "id": "spirit_sword",
+      "name": "Linh Kiếm",
+      "type": "weapon",
+      "rarity": "rare",
+      "stackable": false,
+      "slot": "weapon",
+      "statBonus": { "attack": 35, "critDamage": 0.3, "speed": 5 },
+      "value": 1000
     },
     {
       "id": "leather_armor",
       "name": "Da Giáp",
       "type": "armor",
       "rarity": "common",
+      "stackable": false,
+      "slot": "armor",
       "statBonus": { "defense": 5 },
       "value": 40
+    },
+    {
+      "id": "silk_robe",
+      "name": "Lụa Bào",
+      "type": "armor",
+      "rarity": "uncommon",
+      "stackable": false,
+      "slot": "armor",
+      "statBonus": { "defense": 12, "mp": 30 },
+      "value": 180
+    },
+    {
+      "id": "spirit_robe",
+      "name": "Linh Bào",
+      "type": "armor",
+      "rarity": "rare",
+      "stackable": false,
+      "slot": "armor",
+      "statBonus": { "defense": 25, "hp": 100, "evasion": 0.1 },
+      "value": 900
+    },
+    {
+      "id": "spirit_herb",
+      "name": "Linh Thảo",
+      "type": "material",
+      "rarity": "common",
+      "stackable": true,
+      "maxStack": 999,
+      "value": 5,
+      "tags": ["herb", "alchemy"]
+    },
+    {
+      "id": "thousand_year_ginseng",
+      "name": "Thiên Niên Nhân Sâm",
+      "type": "material",
+      "rarity": "rare",
+      "stackable": true,
+      "maxStack": 99,
+      "value": 500,
+      "tags": ["herb", "alchemy", "rare"]
+    },
+    {
+      "id": "demon_core",
+      "name": "Ma Tâm",
+      "type": "material",
+      "rarity": "uncommon",
+      "stackable": true,
+      "maxStack": 99,
+      "value": 100,
+      "tags": ["core", "alchemy", "drop"]
+    },
+    {
+      "id": "fire_essence",
+      "name": "Hỏa Tinh",
+      "type": "material",
+      "rarity": "uncommon",
+      "stackable": true,
+      "maxStack": 999,
+      "value": 80,
+      "tags": ["essence", "alchemy"]
+    },
+    {
+      "id": "water_essence",
+      "name": "Thủy Tinh",
+      "type": "material",
+      "rarity": "uncommon",
+      "stackable": true,
+      "maxStack": 999,
+      "value": 80,
+      "tags": ["essence", "alchemy"]
+    },
+    {
+      "id": "wood_essence",
+      "name": "Mộc Tinh",
+      "type": "material",
+      "rarity": "uncommon",
+      "stackable": true,
+      "maxStack": 999,
+      "value": 80,
+      "tags": ["essence", "alchemy"]
+    },
+    {
+      "id": "bandit_letter",
+      "name": "Thư Cướp",
+      "type": "quest",
+      "rarity": "common",
+      "stackable": false,
+      "value": 0,
+      "tags": ["quest"]
+    },
+    {
+      "id": "demon_invitation",
+      "name": "Ma Tổ Thiếp",
+      "type": "quest",
+      "rarity": "rare",
+      "stackable": false,
+      "value": 0,
+      "tags": ["quest"]
     }
   ]
 }

@@ -175,20 +175,29 @@ export interface NPC {
 
 // ============== Player ==============
 
+export interface ItemStack {
+  itemId: string;
+  quantity: number;
+}
+
 export interface Player {
   id: typeof PLAYER_ID;
   name: string;
   realm: string;
+  realmLayer: number;
+  cultivationExp: number;
   stats: Stats;
   position: Position;
   currentRegion: string;
   traits: string[];
   states: State[];
   skills: string[];  // skill ids
-  inventory: { itemId: string; quantity: number }[];
+  inventory: ItemStack[];
+  equipment?: Record<string, string>;  // slot → itemId
   gold: number;
   factionRep: Record<string, number>; // factionId → rep
   element: ElementId;
+  questProgress: import("./quest/quest.js").QuestProgress[];
 }
 
 // ============== Combat ==============
@@ -294,6 +303,7 @@ export interface GameSave {
   relations: Relation[];
   worldEvents: DelayedEvent[];
   worldFlags: Record<string, unknown>;
+  factionWars?: FactionWarState[]; // optional for backward compat
 }
 
 export const SAVE_SCHEMA_VERSION = 1;
@@ -309,4 +319,38 @@ export interface EngineState {
   relations: Relation[];
   events: DelayedEvent[];
   flags: Record<string, unknown>;
+  factionWars: FactionWarState[];
+}
+
+export type FactionRank =
+  | "sworn_enemy" | "hostile" | "unfriendly"
+  | "neutral" | "friendly" | "ally" | "sworn_ally";
+
+export interface FactionWarState {
+  factionA: string;
+  factionB: string;
+  intensity: number;        // 0-100
+  startDay: number;
+  casualties: Record<string, number>; // factionId → count
+  active: boolean;
+}
+
+export const FACTION_RANK_THRESHOLDS: Record<FactionRank, number> = {
+  sworn_enemy: -80,
+  hostile: -50,
+  unfriendly: -20,
+  neutral: 20,
+  friendly: 50,
+  ally: 80,
+  sworn_ally: 101, // anything ≥ 80 is ally, ≥ 100 is sworn_ally (capped)
+};
+
+export function rankFromRep(rep: number): FactionRank {
+  if (rep <= -80) return "sworn_enemy";
+  if (rep <= -50) return "hostile";
+  if (rep <= -20) return "unfriendly";
+  if (rep < 20) return "neutral";
+  if (rep < 50) return "friendly";
+  if (rep < 80) return "ally";
+  return "sworn_ally";
 }

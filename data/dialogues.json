@@ -1,0 +1,147 @@
+{
+  "dataVersion": 1,
+  "trees": [
+    {
+      "id": "village_elder",
+      "rootNode": "root",
+      "nodes": {
+        "root": {
+          "id": "root",
+          "speaker": "Lý Trưởng Lão",
+          "text": "Ôi đạo hữu, làng chúng tôi đang gặp khó khăn. Cướp rừng hoành hành, ma giáo rình rập. Ngươi có giúp được gì không?",
+          "choices": [
+            { "text": "Tôi sẽ giúp dẹp cướp rừng", "next": "give_quest_bandits" },
+            { "text": "Đưa thư cho Lý Vệ Sĩ", "next": "give_letter" },
+            { "text": "Có việc gì khác không?", "next": "ask_other" },
+            { "text": "Tạm biệt", "next": "end" }
+          ]
+        },
+        "give_quest_bandits": {
+          "id": "give_quest_bandits",
+          "speaker": "Lý Trưởng Lão",
+          "text": "Tốt lắm! 3 tên cướp và đầu lĩnh, tiêu diệt xong ta hậu tạ.",
+          "effects": { "startQuest": ["clear_forest_bandits"], "affinity": [{ "npcId": "village_elder", "delta": 15 }] },
+          "next": "end"
+        },
+        "give_letter": {
+          "id": "give_letter",
+          "speaker": "Lý Trưởng Lão",
+          "text": "Đây, mang thư này cho Vệ Sĩ Lý. Cẩn thận trên đường.",
+          "effects": {
+            "giveItem": [{ "itemId": "bandit_letter", "quantity": 1 }],
+            "startQuest": ["letter_delivery"],
+            "affinity": [{ "npcId": "village_elder", "delta": 5 }]
+          },
+          "next": "end"
+        },
+        "ask_other": {
+          "id": "ask_other",
+          "speaker": "Lý Trưởng Lão",
+          "text": "Ta cũng nghe nói gần đây có yêu khí ở Ma Cốc. Cẩn thận khi tu luyện.",
+          "next": "end"
+        },
+        "end": { "id": "end", "speaker": "Lý Trưởng Lão", "text": "Đa tạ đạo hữu.", "isEnd": true }
+      }
+    },
+    {
+      "id": "wanderer",
+      "rootNode": "root",
+      "nodes": {
+        "root": {
+          "id": "root",
+          "speaker": "Lữ Khách",
+          "text": "Đạo hữu cần dược liệu không? Ta chuyên bán linh thảo.",
+          "choices": [
+            { "text": "Cho ta 5 cây linh thảo đi", "next": "give_herbs" },
+            { "text": "Có nhiệm vụ gì cho ta không?", "next": "give_quest_herbs" },
+            { "text": "Tạm biệt", "next": "end" }
+          ]
+        },
+        "give_herbs": {
+          "id": "give_herbs",
+          "speaker": "Lữ Khách",
+          "text": "Được thôi, cầm lấy.",
+          "effects": { "giveItem": [{ "itemId": "spirit_herb", "quantity": 5 }], "affinity": [{ "npcId": "wanderer", "delta": 10 }] },
+          "next": "end"
+        },
+        "give_quest_herbs": {
+          "id": "give_quest_herbs",
+          "speaker": "Lữ Khách",
+          "text": "Ta đang cần 5 cây linh thảo để bào chế. Giúp ta nhé?",
+          "effects": { "startQuest": ["herb_gathering"], "affinity": [{ "npcId": "wanderer", "delta": 5 }] },
+          "next": "end"
+        },
+        "end": { "id": "end", "speaker": "Lữ Khách", "text": "Cảm ơn đạo hữu.", "isEnd": true }
+      }
+    },
+    {
+      "id": "thanh_van_patrol",
+      "rootNode": "root",
+      "nodes": {
+        "root": {
+          "id": "root",
+          "speaker": "Thanh Vân Tuần Tra",
+          "text": "Đạo hữu, Thanh Vân Môn đang chiêu mộ đệ tử chính phái. Có hứng thú không?",
+          "choices": [
+            { "text": "Ta muốn gia nhập Thanh Vân Môn", "next": "join_recruit", "condition": { "factionRepMin": { "thanh_van_sect": 0 } } },
+            { "text": "Ta có thể làm gì cho môn phái?", "next": "give_quest", "condition": { "factionRepMin": { "thanh_van_sect": 0 } } },
+            { "text": "Cần uy tín bao nhiêu để gia nhập?", "next": "ask_rep", "condition": { "factionRepMin": { "thanh_van_sect": -1000 } } },
+            { "text": "Tạm biệt", "next": "end" }
+          ]
+        },
+        "join_recruit": {
+          "id": "join_recruit",
+          "speaker": "Thanh Vân Tuần Tra",
+          "text": "Hoan nghênh! Hãy đến đại điện. Trước tiên hãy chứng minh lòng chính phái.",
+          "effects": { "startQuest": ["sect_recruit_trial"], "affinity": [{ "npcId": "thanh_van_patrol", "delta": 15 }] },
+          "next": "end"
+        },
+        "give_quest": {
+          "id": "give_quest",
+          "speaker": "Thanh Vân Tuần Tra",
+          "text": "Ma giáo đang do thám. Hãy hạ 2 tên trinh sát.",
+          "effects": { "startQuest": ["demon_scout_patrol"], "affinity": [{ "npcId": "thanh_van_patrol", "delta": 5 }] },
+          "next": "end"
+        },
+        "ask_rep": {
+          "id": "ask_rep",
+          "speaker": "Thanh Vân Tuần Tra",
+          "text": "Cần ít nhất 50 uy tín với Thanh Vân Môn. Hãy làm nhiệm vụ trước.",
+          "next": "end"
+        },
+        "end": { "id": "end", "speaker": "Thanh Vân Tuần Tra", "text": "Hẹn gặp lại.", "isEnd": true }
+      }
+    },
+    {
+      "id": "village_merchant",
+      "rootNode": "root",
+      "nodes": {
+        "root": {
+          "id": "root",
+          "speaker": "Trần Thương Nhân",
+          "text": "Khách quan! Hàng tốt giá hợp lý đây. Có cần gì không?",
+          "choices": [
+            { "text": "Mua linh thảo", "next": "shop_herbs" },
+            { "text": "Thông tin về vùng lân cận?", "next": "ask_info" },
+            { "text": "Tạm biệt", "next": "end" }
+          ]
+        },
+        "shop_herbs": {
+          "id": "shop_herbs",
+          "speaker": "Trần Thương Nhân",
+          "text": "5 vàng mỗi cây. Bao nhiêu cũng có.",
+          "effects": { "takeItem": [], "giveItem": [] },
+          "next": "end"
+        },
+        "ask_info": {
+          "id": "ask_info",
+          "speaker": "Trần Thương Nhân",
+          "text": "Phía đông có Ma Cốc, cẩn thận. Thanh Vân Môn đang canh phía bắc.",
+          "effects": { "cultivationExp": 20 },
+          "next": "end"
+        },
+        "end": { "id": "end", "speaker": "Trần Thương Nhân", "text": "Hẹn gặp lại khách quan.", "isEnd": true }
+      }
+    }
+  ]
+}

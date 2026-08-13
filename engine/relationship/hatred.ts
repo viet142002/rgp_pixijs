@@ -15,6 +15,8 @@ import { addGrudge, addMemory } from "../npc/model.js";
 import { resolveModifiers } from "../traits/resolver.js";
 import { getRelationsTo } from "./graph.js";
 import { dispatchEvent } from "../events/dispatcher.js";
+import { applyRepChange, REP_DELTAS } from "../faction/reputation.js";
+import { recordCasualty } from "../faction/war.js";
 
 export interface HatredTrigger {
   actor: EntityId;       // who did the bad thing
@@ -90,6 +92,29 @@ export function propagateHatred(
       // Skip if they already got grudge from witness/relation (same actor, same day)
       if (fmNpc.grudge.some((g) => g.target === trigger.actor)) continue;
       grantGrudgeFromFaction(state, data, fmNpc, victim, trigger, events);
+    }
+  }
+
+  // 4. Player faction reputation (only when player is actor)
+  if (trigger.actor === "player" && victim.factionId) {
+    const repDelta = trigger.type === "killed" ? REP_DELTAS.killedMember :
+                     trigger.type === "attacked" ? -3 :
+                     trigger.type === "robbed" ? REP_DELTAS.robbedMember : 0;
+    applyRepChange(state.player, victim.factionId, repDelta, `player_${trigger.type}_${victim.id}`, "player");
+
+    if (trigger.type === "killed") {
+      recordCasualty(state, victim.factionId);
+    }
+
+    // Cascade: ally/enemy factions
+    const factionDef = data.factions.get(victim.factionId);
+    if (factionDef) {
+      for (const allyId of factionDef.allyTo) {
+        applyRepChange(state.player, allyId, repDelta * 0.3, `cascade_ally_${victim.id}`, "player");
+      }
+      for (const enemyId of factionDef.hostileTo) {
+        applyRepChange(state.player, enemyId, -repDelta * 0.3, `cascade_enemy_${victim.id}`, "player");
+      }
     }
   }
 

@@ -40,6 +40,7 @@ export class SaveSerializer {
       relations: state.relations.map((r) => ({ ...r })),
       worldEvents: state.events.map((e) => ({ ...e })),
       worldFlags: { ...state.flags },
+      factionWars: state.factionWars.map((w) => ({ ...w, casualties: { ...w.casualties } })),
     };
   }
 
@@ -71,6 +72,7 @@ export class SaveSerializer {
       relations: workingSave.relations.map((r) => ({ ...r })),
       events: workingSave.worldEvents.map((e) => ({ ...e })),
       flags: { ...workingSave.worldFlags },
+      factionWars: (workingSave as GameSave & { factionWars?: typeof workingSave.worldEvents }).factionWars ?? [],
     };
   }
 
@@ -106,8 +108,13 @@ function clonePlayer(p: Player): Player {
     states: p.states.map((s) => ({ ...s })),
     skills: [...p.skills],
     inventory: p.inventory.map((i) => ({ ...i })),
+    equipment: p.equipment ? { ...p.equipment } : undefined,
     factionRep: { ...p.factionRep },
     traits: [...p.traits],
+    questProgress: p.questProgress ? p.questProgress.map((q) => ({
+      ...q,
+      objectiveProgress: { ...q.objectiveProgress },
+    })) : [],
   };
 }
 
@@ -134,7 +141,9 @@ export function createDefaultPlayer(): Player {
   return {
     id: PLAYER_ID,
     name: "Vô Danh Tu Sĩ",
-    realm: "luyen_khi_1",
+    realm: "luyen_khi",
+    realmLayer: 1,
+    cultivationExp: 0,
     stats: {
       hp: 120,
       mp: 60,
@@ -154,13 +163,16 @@ export function createDefaultPlayer(): Player {
     inventory: [
       { itemId: "hp_potion_small", quantity: 3 },
       { itemId: "mp_potion_small", quantity: 2 },
+      { itemId: "antidote", quantity: 1 },
     ],
+    equipment: {},
     gold: 100,
     factionRep: {
       village_council: 0,
       thanh_van_sect: 0,
     },
     element: "fire",
+    questProgress: [],
   };
 }
 

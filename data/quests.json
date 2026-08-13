@@ -1,0 +1,95 @@
+{
+  "dataVersion": 1,
+  "quests": [
+    {
+      "id": "clear_forest_bandits",
+      "name": "Sơn Phái Quy Mẫu",
+      "description": "Trưởng làng nhờ dẹp tan bọn cướp trong rừng",
+      "giver": "village_elder",
+      "objectives": [
+        { "type": "kill", "target": "forest_bandit", "quantity": 3, "description": "Tiêu diệt 3 tên cướp rừng" },
+        { "type": "kill", "target": "forest_bandit_leader", "quantity": 1, "description": "Hạ thủ đầu lĩnh cướp" }
+      ],
+      "rewards": {
+        "gold": 200,
+        "factionRep": [{ "factionId": "village_council", "delta": 15 }],
+        "exp": 100,
+        "items": [{ "itemId": "hp_potion_medium", "quantity": 3 }]
+      }
+    },
+    {
+      "id": "demon_scout_patrol",
+      "name": "Ma Giáo Thám Thính",
+      "description": "Tà giáo xuất hiện ở cổng làng. Thanh Vân Môn yêu cầu tuần tra",
+      "giver": "thanh_van_patrol",
+      "objectives": [
+        { "type": "kill", "target": "demon_scout", "quantity": 2, "description": "Hạ 2 ma giáo do thám" }
+      ],
+      "rewards": {
+        "cultivationExp": 80,
+        "factionRep": [{ "factionId": "thanh_van_sect", "delta": 10 }],
+        "gold": 150
+      },
+      "prereq": {
+        "factionRepMin": { "thanh_van_sect": 0 }
+      }
+    },
+    {
+      "id": "herb_gathering",
+      "name": "Thu Thập Dược Liệu",
+      "description": "Lữ Khách cần linh thảo để bào chế đan dược",
+      "giver": "wanderer",
+      "objectives": [
+        { "type": "collect", "target": "spirit_herb", "quantity": 5, "description": "Gom 5 cây linh thảo" }
+      ],
+      "rewards": {
+        "gold": 50,
+        "items": [{ "itemId": "hp_potion_medium", "quantity": 2 }],
+        "exp": 30
+      }
+    },
+    {
+      "id": "letter_delivery",
+      "name": "Đưa Thư Cho Vệ Sĩ",
+      "description": "Trưởng làng muốn gửi thư cho Lý Vệ Sĩ",
+      "giver": "village_elder",
+      "objectives": [
+        { "type": "deliver", "target": "bandit_letter", "quantity": 1, "description": "Đưa thư cho Vệ Sĩ" }
+      ],
+      "rewards": {
+        "gold": 30,
+        "factionRep": [{ "factionId": "village_council", "delta": 5 }]
+      }
+    },
+    {
+      "id": "explore_demon_valley",
+      "name": "Khám Phá Ma Cốc",
+      "description": "Một thung lũng kỳ bí ở phía Đông. Hãy khám phá",
+      "objectives": [
+        { "type": "explore", "target": "region_demon_valley", "quantity": 1, "description": "Đặt chân vào Ma Cốc" }
+      ],
+      "rewards": {
+        "cultivationExp": 200,
+        "gold": 500
+      }
+    },
+    {
+      "id": "sect_recruit_trial",
+      "name": "Nhập Môn Thanh Vân",
+      "description": "Vượt qua thử thách để gia nhập Thanh Vân Môn",
+      "objectives": [
+        { "type": "kill", "target": "demon_disciple", "quantity": 1, "description": "Hạ 1 đệ tử ma giáo" },
+        { "type": "explore", "target": "region_forest", "quantity": 1, "description": "Tuần tra rừng" }
+      ],
+      "rewards": {
+        "cultivationExp": 300,
+        "factionRep": [{ "factionId": "thanh_van_sect", "delta": 30 }],
+        "gold": 200,
+        "items": [{ "itemId": "breakthrough_pill_minor", "quantity": 1 }]
+      },
+      "prereq": {
+        "factionRepMin": { "thanh_van_sect": 20 }
+      }
+    }
+  ]
+}

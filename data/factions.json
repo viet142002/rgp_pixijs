@@ -1,5 +1,5 @@
 {
-  "dataVersion": 1,
+  "dataVersion": 2,
   "factions": [
     {
       "id": "village_council",
@@ -13,15 +13,15 @@
       "id": "thanh_van_sect",
       "name": "Thanh Vân Tông",
       "alignment": "righteous",
-      "hostileTo": ["demon_sect"],
+      "hostileTo": ["demon_sect", "bandit_camp"],
       "allyTo": ["bai_yun_sect"],
-      "regions": ["region_sect_main"]
+      "regions": ["region_sect_main", "region_forest"]
     },
     {
       "id": "demon_sect",
       "name": "Ma Giáo",
       "alignment": "evil",
-      "hostileTo": ["thanh_van_sect", "bai_yun_sect"],
+      "hostileTo": ["thanh_van_sect", "bai_yun_sect", "village_council"],
       "allyTo": [],
       "regions": ["region_demon_valley"]
     },
@@ -29,9 +29,25 @@
       "id": "bai_yun_sect",
       "name": "Bạch Vân Tông",
       "alignment": "righteous",
-      "hostileTo": ["demon_sect"],
+      "hostileTo": ["demon_sect", "bandit_camp"],
       "allyTo": ["thanh_van_sect"],
       "regions": ["region_baiyun_peak"]
+    },
+    {
+      "id": "bandit_camp",
+      "name": "Hắc Phong Trại",
+      "alignment": "evil",
+      "hostileTo": ["thanh_van_sect", "bai_yun_sect", "village_council"],
+      "allyTo": [],
+      "regions": ["region_forest"]
+    },
+    {
+      "id": "wandering",
+      "name": "Lữ Khách",
+      "alignment": "neutral",
+      "hostileTo": [],
+      "allyTo": [],
+      "regions": []
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "dataVersion": 1,
+  "dataVersion": 2,
   "templates": [
     {
       "id": "village_elder",
@@ -61,6 +61,7 @@
       "traits": ["BLOODTHIRSTY", "VINDICTIVE"],
       "factionId": "demon_sect",
       "element": "fire",
+      "skills": ["poison_sting"],
       "homeRegion": "region_village",
       "spawnPosition": { "x": 640, "y": 480 }
     },
@@ -101,6 +102,84 @@
       "inventory": ["iron_sword", "leather_armor"],
       "homeRegion": "region_village",
       "spawnPosition": { "x": 192, "y": 320 }
+    },
+    {
+      "id": "forest_bandit_leader",
+      "name": "Hắc Lang Đầu Lĩnh",
+      "gender": "Male",
+      "realm": "truc_co_2",
+      "stats": { "hp": 480, "mp": 200, "attack": 45, "defense": 35, "speed": 32, "critRate": 0.1, "critDamage": 1.7, "evasion": 0.05, "accuracy": 0.92 },
+      "traits": ["BLOODTHIRSTY", "CUNNING", "VINDICTIVE"],
+      "factionId": "bandit_camp",
+      "element": "wind",
+      "skills": ["wind_blade", "bandit_snipe"],
+      "homeRegion": "region_forest",
+      "spawnPosition": { "x": 1500, "y": 1200 }
+    },
+    {
+      "id": "forest_bandit",
+      "name": "Hắc Lang Thổ Phỉ",
+      "gender": "Male",
+      "realm": "luyen_khi_6",
+      "stats": { "hp": 200, "mp": 90, "attack": 22, "defense": 18, "speed": 14, "critRate": 0.08, "critDamage": 1.6, "evasion": 0.05, "accuracy": 0.92 },
+      "traits": ["BLOODTHIRSTY"],
+      "factionId": "bandit_camp",
+      "element": "wind",
+      "skills": ["poison_sting"],
+      "homeRegion": "region_forest",
+      "spawnPosition": { "x": 1450, "y": 1250 }
+    },
+    {
+      "id": "forest_hunter",
+      "name": "Lâm Th� Săn",
+      "gender": "Male",
+      "realm": "luyen_khi_5",
+      "stats": { "hp": 190, "mp": 80, "attack": 24, "defense": 16, "speed": 16, "critRate": 0.1, "critDamage": 1.6, "evasion": 0.08, "accuracy": 0.95 },
+      "traits": ["CUNNING", "PROTECTOR"],
+      "factionId": "wandering",
+      "element": "wood",
+      "skills": ["forest_stealth"],
+      "homeRegion": "region_forest",
+      "spawnPosition": { "x": 1200, "y": 1400 }
+    },
+    {
+      "id": "demon_scout",
+      "name": "Ma Giáo Trinh Sát",
+      "gender": "Female",
+      "realm": "luyen_khi_8",
+      "stats": { "hp": 260, "mp": 130, "attack": 28, "defense": 22, "speed": 18, "critRate": 0.08, "critDamage": 1.6, "evasion": 0.08, "accuracy": 0.95 },
+      "traits": ["CUNNING", "VINDICTIVE"],
+      "factionId": "demon_sect",
+      "element": "fire",
+      "skills": ["demon_curse", "poison_sting"],
+      "homeRegion": "region_forest",
+      "spawnPosition": { "x": 1700, "y": 1100 }
+    },
+    {
+      "id": "thanh_van_patrol",
+      "name": "Thanh Vân Tuần Tra",
+      "gender": "Male",
+      "realm": "luyen_khi_7",
+      "stats": { "hp": 240, "mp": 110, "attack": 26, "defense": 22, "speed": 15, "critRate": 0.06, "critDamage": 1.5, "evasion": 0.05, "accuracy": 0.95 },
+      "traits": ["RIGHTEOUS", "PROTECTOR"],
+      "factionId": "thanh_van_sect",
+      "element": "lightning",
+      "skills": ["thunder_strike", "earth_wall"],
+      "homeRegion": "region_forest",
+      "spawnPosition": { "x": 1300, "y": 1500 }
+    },
+    {
+      "id": "wandering_cultivator",
+      "name": "Tán Tu Vô Danh",
+      "gender": "Male",
+      "realm": "luyen_khi_5",
+      "stats": { "hp": 200, "mp": 100, "attack": 22, "defense": 18, "speed": 14, "critRate": 0.05, "critDamage": 1.5, "evasion": 0.05, "accuracy": 0.95 },
+      "traits": ["COMPASSIONATE", "CUNNING"],
+      "factionId": "wandering",
+      "element": "none",
+      "skills": ["ice_lance", "wood_heal"],
+      "homeRegion": "region_forest",
+      "spawnPosition": { "x": 1100, "y": 1000 }
     }
   ]
 }

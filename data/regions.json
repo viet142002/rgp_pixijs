@@ -1,5 +1,5 @@
 {
-  "dataVersion": 1,
+  "dataVersion": 2,
   "regions": [
     {
       "id": "region_village",
@@ -13,10 +13,10 @@
     {
       "id": "region_forest",
       "name": "Hắc Phong Lâm",
-      "width": 60,
-      "height": 50,
+      "width": 80,
+      "height": 60,
       "tileSize": 32,
-      "encounterRate": 0.15,
+      "encounterRate": 0.20,
       "isSafeZone": false
     },
     {
@@ -27,6 +27,15 @@
       "tileSize": 32,
       "encounterRate": 0.05,
       "isSafeZone": true
+    },
+    {
+      "id": "region_demon_valley",
+      "name": "Ma Giáo Cốc",
+      "width": 50,
+      "height": 50,
+      "tileSize": 32,
+      "encounterRate": 0.18,
+      "isSafeZone": false
     }
   ]
 }

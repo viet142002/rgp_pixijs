@@ -93,7 +93,92 @@ async function main(): Promise<void> {
     console.log(`(no hatred — battle result: ${engine.lastBattleResult})`);
   }
 
-  // 7. Save / load roundtrip
+  // 6.5. Quan hệ player ↔ NPC sau khi giết (chỉ仇恨/grudge, chưa có relation entry trực tiếp)
+  console.log("\n--- Quan hệ Player↔NPC sau khi giết Wanderer ---");
+  console.log("(grudge = hatred tích lũy, khi đủ mạnh NPC sẽ chuyển thành relation type=enemy)");
+  for (const npc of engine.listNpcs()) {
+    const rels = engine.state.relations.filter(
+      (r) => r.from === "player" && r.to === npc.id
+    );
+    const hate = engine.getGrudgesAgainstPlayer(npc.id);
+    if (rels.length > 0 || hate > 0) {
+      const relStr = rels
+        .map((r) => `${r.type}(aff:${r.affinity.toFixed(0)})`)
+        .join(", ");
+      console.log(
+        `  Player → ${npc.name.padEnd(20)} [${relStr || "(chưa có relation)"}]  hatred=${hate.toFixed(1)}`
+      );
+    }
+  }
+
+  // 7. Spare demonstration: player tha một NPC → friend relation
+  console.log("\n--- Spare flow: tha Tiểu Học Đồ ---");
+  console.log("Trước:");
+  const beforeSpare = engine.state.relations.filter(
+    (r) => r.from === "player" && r.to === "village_child"
+  );
+  console.log(
+    `  Player → village_child: ${beforeSpare.map((r) => `${r.type}(${r.affinity})`).join(", ") || "(none)"}`
+  );
+  engine.spareNpc("village_child");
+  const afterSpare = engine.state.relations.filter(
+    (r) => r.from === "player" && r.to === "village_child"
+  );
+  console.log("Sau spareNpc():");
+  console.log(
+    `  Player → village_child: ${afterSpare.map((r) => `${r.type}(aff:${r.affinity.toFixed(0)}, str:${r.strength.toFixed(0)})`).join(", ")}`
+  );
+
+  // 8. Rob demonstration: player cướp NPC → enemy relation
+  console.log("\n--- Rob flow: cướp Thương Nhân ---");
+  console.log("Trước:");
+  const beforeRob = engine.state.relations.filter(
+    (r) => r.from === "player" && r.to === "village_merchant"
+  );
+  console.log(
+    `  Player → village_merchant: ${beforeRob.map((r) => `${r.type}(${r.affinity})`).join(", ") || "(none)"}`
+  );
+  engine.robNpc("village_merchant");
+  const afterRob = engine.state.relations.filter(
+    (r) => r.from === "player" && r.to === "village_merchant"
+  );
+  console.log("Sau robNpc():");
+  console.log(
+    `  Player → village_merchant: ${afterRob.map((r) => `${r.type}(aff:${r.affinity.toFixed(0)}, str:${r.strength.toFixed(0)})`).join(", ")}`
+  );
+
+  // 9. Quan hệ cuối cùng — tổng hợp tất cả
+  console.log("\n--- Quan hệ cuối cùng (Player ↔ NPC) ---");
+  for (const npc of engine.listNpcs()) {
+    const rels = engine.state.relations.filter(
+      (r) => r.from === "player" && r.to === npc.id
+    );
+    const hate = engine.getGrudgesAgainstPlayer(npc.id);
+    if (rels.length > 0 || hate > 0) {
+      const relStr = rels
+        .map((r) => `${r.type}(aff:${r.affinity.toFixed(0)}, str:${r.strength.toFixed(0)})`)
+        .join(", ");
+      console.log(
+        `  Player → ${npc.name.padEnd(20)} ${relStr || "(grudge only)"}  hatred=${hate.toFixed(1)}`
+      );
+    }
+  }
+
+  // 10. Quan hệ NPC ↔ NPC (đã bootstrap lúc khởi tạo)
+  console.log("\n--- Quan hệ NPC ↔ NPC (đã bootstrap) ---");
+  for (const npc of engine.listNpcs()) {
+    const rels = engine.state.relations.filter(
+      (r) => r.from === npc.id && r.to !== "player"
+    );
+    if (rels.length > 0) {
+      const relStr = rels
+        .map((r) => `→ ${engine.getNpc(r.to)?.name ?? r.to}: ${r.type}(${r.affinity.toFixed(0)})`)
+        .join(", ");
+      console.log(`  ${npc.name.padEnd(20)} ${relStr}`);
+    }
+  }
+
+  // 11. Save / load roundtrip
   console.log("\n--- Save / Load roundtrip ---");
   const save = engine.save();
   console.log(`Save size: ${JSON.stringify(save).length} bytes`);
@@ -102,8 +187,310 @@ async function main(): Promise<void> {
   console.log(`Restored time: ${formatTime(engine2.state.time)}`);
   console.log(`Restored NPCs: ${engine2.state.npcs.size}`);
   console.log(`Player HP: ${engine2.getPlayer().stats.hp}`);
+  console.log(
+    `Restored player→village_child: ${engine2.state.relations
+      .filter((r) => r.from === "player" && r.to === "village_child")
+      .map((r) => `${r.type}(${r.affinity})`)
+      .join(", ")}`
+  );
 
-  console.log("\n=== Demo complete ===");
+  // ============== Faction mechanics demo ==============
+
+  // Setup: fresh engine with initial faction war for clean demo
+  console.log("\n=== Faction Mechanics Demo ===");
+  const factionEngine = createEngine({
+    seed: 99999,
+    data,
+    initialFactionWars: [
+      { factionA: "thanh_van_sect", factionB: "demon_sect", intensity: 60 },
+      { factionA: "village_council", factionB: "bandit_camp", intensity: 40 },
+    ],
+  });
+  factionEngine.state.player.stats.attack = 100;
+  factionEngine.state.player.stats.hp = 1000;
+  factionEngine.state.player.stats.defense = 50;
+
+  console.log("\n--- 12. Reputation BEFORE killing ---");
+  console.log("(Player has 0 rep with all factions by default)");
+  for (const [factionId, rep] of Object.entries(factionEngine.getAllPlayerRep())) {
+    const rank = factionEngine.getPlayerRank(factionId);
+    console.log(`  ${factionId.padEnd(20)} rep=${rep.toString().padStart(4)}  rank=${rank}`);
+  }
+
+  console.log("\n--- 13. Kill demon disciple (demon_sect member) ---");
+  console.log(`  demon_sect hostile to: ${data.factions.get("demon_sect")?.hostileTo.join(", ")}`);
+  console.log(`  → expect rep drop with demon_sect, rep rise with their enemies (thanh_van_sect)`);
+  factionEngine.attackNpc("demon_disciple");
+  let fcTurn = 0;
+  while (factionEngine.battle && fcTurn < 30) {
+    const actor = factionEngine.battle.combatants[factionEngine.battle.currentActorIdx];
+    if (!actor) break;
+    const targets = factionEngine.battle.combatants.filter(
+      (c: import("./types.js").Combatant) => c.team !== actor.team && c.alive
+    );
+    if (targets.length === 0) break;
+    factionEngine.combatAction({
+      actorId: actor.id,
+      action: "attack",
+      targetId: targets[0]!.id,
+    });
+    fcTurn++;
+  }
+  console.log(`  result: ${factionEngine.lastBattleResult}`);
+  console.log("  Rep AFTER:");
+  for (const [factionId, rep] of Object.entries(factionEngine.getAllPlayerRep())) {
+    const rank = factionEngine.getPlayerRank(factionId);
+    if (rep !== 0) {
+      console.log(`    ${factionId.padEnd(20)} rep=${rep.toString().padStart(4)}  rank=${rank}`);
+    }
+  }
+
+  console.log("\n--- 14. War escalation: war intensity grows after kill ---");
+  console.log(`  thanh_van_sect vs demon_sect intensity: ${factionEngine.getWarIntensity("thanh_van_sect", "demon_sect")}`);
+  console.log(`  casualties:`, factionEngine.getFactionWars("demon_sect").map(w => w.casualties));
+
+  console.log("\n--- 15. War decay over 200 ticks ---");
+  const beforeDecay = factionEngine.getWarIntensity("thanh_van_sect", "demon_sect");
+  for (let i = 0; i < 200; i++) factionEngine.tickWorld();
+  const afterDecay = factionEngine.getWarIntensity("thanh_van_sect", "demon_sect");
+  console.log(`  ${beforeDecay.toFixed(1)} → ${afterDecay.toFixed(1)}`);
+
+  console.log("\n--- 16. Personal betrayal: force grudge then check ---");
+  const sectMember = factionEngine.getNpc("sect_disciple")!;
+  console.log(`  before: ${sectMember.name} faction=${sectMember.factionId}`);
+  sectMember.grudge.push({
+    target: "thanh_van_patrol",
+    type: "attacked",
+    strength: 100,
+    decay: 1,
+    day: 0,
+  });
+  const betrayal = factionEngine.checkAndTriggerBetrayal("sect_disciple");
+  if (betrayal) {
+    const updated = factionEngine.getNpc("sect_disciple")!;
+    console.log(`  after:  ${updated.name} faction=${updated.factionId} (reason=${betrayal.reason})`);
+  } else {
+    console.log(`  no betrayal triggered`);
+  }
+
+  console.log("\n--- 17. Disband faction: disband village_council ---");
+  console.log(`  village_council members: ${factionEngine.listNpcs().filter(n => n.factionId === "village_council").map(n => n.name).join(", ")}`);
+  const disbanded = factionEngine.disbandFaction("village_council");
+  console.log(`  → ${disbanded.length} NPCs migrated to wandering`);
+  console.log(`  village_council members after: ${factionEngine.listNpcs().filter(n => n.factionId === "village_council").map(n => n.name).join(", ") || "(none)"}`);
+
+  // ============== Items demo ==============
+
+  console.log("\n=== Item System Demo ===");
+  const itemEngine = createEngine({ seed: 55555, data });
+  itemEngine.state.player.stats.hp = 30;
+
+  console.log("\n--- 18. Inventory trước ---");
+  for (const stack of itemEngine.getPlayer().inventory) {
+    const def = data.items.get(stack.itemId);
+    console.log(`  ${def?.name.padEnd(28) ?? stack.itemId.padEnd(28)} × ${stack.quantity}`);
+  }
+
+  console.log("\n--- 19. Nhặt vật phẩm ---");
+  itemEngine.giveItem("hp_potion_small", 5);
+  itemEngine.giveItem("spirit_sword", 1);
+  itemEngine.giveItem("qi_recovery_pill", 3);
+  console.log(`  Sau khi nhặt:`);
+  for (const stack of itemEngine.getPlayer().inventory) {
+    const def = data.items.get(stack.itemId);
+    console.log(`    ${def?.name.padEnd(28) ?? stack.itemId.padEnd(28)} × ${stack.quantity}`);
+  }
+
+  console.log("\n--- 20. Trang bị ---");
+  itemEngine.equipItem("spirit_sword");
+  const bonus = itemEngine.getEquipmentBonus();
+  console.log(`  bonus tấn công: ${bonus.attack}`);
+  console.log(`  weapon slot: ${itemEngine.getPlayer().equipment?.weapon}`);
+
+  console.log("\n--- 21. Dùng đan dược ---");
+  const healRes = itemEngine.applyItem("hp_potion_small");
+  console.log(`  hp_potion_small: heal=${healRes.effect?.heal}, consumed=${healRes.consumed}`);
+  const qiRes = itemEngine.applyItem("qi_recovery_pill");
+  console.log(`  qi_recovery_pill: cultivationExp +${qiRes.effect?.cultivationExp}, tổng exp: ${itemEngine.getPlayer().cultivationExp}`);
+
+  console.log(`  HP sau dùng đan: ${itemEngine.getPlayer().stats.hp}`);
+
+  // ============== Cultivation demo ==============
+
+  console.log("\n=== Cultivation (Tu Luyện) Demo ===");
+  const cultEngine = createEngine({ seed: 77777, data });
+  cultEngine.state.currentRegion = "region_village";
+  cultEngine.state.player.stats.hp = cultEngine.getPlayerMaxHp();
+
+  console.log(`\n--- 22. Tu vi ban đầu ---`);
+  console.log(`  ${cultEngine.getRealmDisplay()}`);
+  console.log(`  exp: ${cultEngine.getCultivationExp()}`);
+
+  console.log(`\n--- 23. Tọa thiền 8h ---`);
+  const medRes = cultEngine.meditate(8 * 60);
+  console.log(`  +${medRes.expGained} tu vi`);
+  console.log(`  exp: ${cultEngine.getCultivationExp()}`);
+  console.log(`  ${cultEngine.getRealmDisplay()}`);
+
+  console.log(`\n--- 24. Luyện đan (Tụ Khí Đan) ---`);
+  cultEngine.giveItem("spirit_herb", 6);
+  cultEngine.giveItem("wood_essence", 2);
+  const craftRes = cultEngine.craft("qi_recovery_pill_recipe");
+  console.log(`  ${craftRes.message}`);
+  console.log(`  tụ khí đan trong kho: ${cultEngine.countItem("qi_recovery_pill")}`);
+
+  console.log(`\n--- 25. Dùng Tụ Khí Đan ---`);
+  const expBefore = cultEngine.getCultivationExp();
+  cultEngine.applyItem("qi_recovery_pill");
+  console.log(`  exp: ${expBefore} → ${cultEngine.getCultivationExp()}`);
+
+  console.log(`\n--- 26. Đột phá Luyện Khí tầng 2 ---`);
+  // Add large exp pool and try multiple times
+  for (let i = 0; i < 5; i++) {
+    cultEngine.addCultivationExp(200);
+  }
+  let btAttempts = 0;
+  let btResult = cultEngine.attemptBreakthrough();
+  while (!btResult.success && btAttempts < 50) {
+    cultEngine.addCultivationExp(200);
+    btResult = cultEngine.attemptBreakthrough();
+    btAttempts++;
+  }
+  console.log(`  ${btResult.message}`);
+  console.log(`  ${cultEngine.getRealmDisplay()} (sau ${btAttempts} lần thử)`);
+  if (btResult.qiDeviation) {
+    console.log(`  ⚠ Đã trải qua tẩu hỏa nhập ma`);
+  }
+
+  // ============== Quest demo ==============
+
+  console.log("\n=== Quest System Demo ===");
+  const questEngine = createEngine({ seed: 88888, data });
+
+  console.log(`\n--- 27. Danh sách nhiệm vụ ---`);
+  for (const q of questEngine.listQuests().slice(0, 4)) {
+    console.log(`  ${q.name.padEnd(28)} — ${q.description.substring(0, 50)}...`);
+  }
+
+  console.log(`\n--- 28. Nhận quest ---`);
+  const a1 = questEngine.acceptQuest("herb_gathering");
+  console.log(`  herb_gathering: accepted=${a1.accepted} ${a1.reason ?? ""}`);
+  const a2 = questEngine.acceptQuest("sect_recruit_trial");
+  console.log(`  sect_recruit_trial: accepted=${a2.accepted} ${a2.reason ?? ""}`);
+  const a3 = questEngine.acceptQuest("demon_scout_patrol");
+  console.log(`  demon_scout_patrol: accepted=${a3.accepted} ${a3.reason ?? ""}`);
+
+  console.log(`\n--- 29. Tiến độ quest ---`);
+  for (const q of questEngine.getActiveQuests()) {
+    const def = questEngine.getQuest(q.questId)!;
+    console.log(`  ${def.name.padEnd(28)}`);
+    def.objectives.forEach((obj, idx) => {
+      const cur = q.objectiveProgress[idx] ?? 0;
+      console.log(`    - ${obj.description}: ${cur}/${obj.quantity}`);
+    });
+  }
+
+  console.log(`\n--- 30. Hoàn thành mục tiêu ---`);
+  questEngine.triggerOnItemGained("spirit_herb", 5); // collect objective done
+  for (const q of questEngine.getAllQuestProgress()) {
+    const def = questEngine.getQuest(q.questId)!;
+    console.log(`  ${def.name}: status=${q.status}`);
+  }
+
+  console.log(`\n--- 31. Khám phá vùng mới ---`);
+  questEngine.acceptQuest("explore_demon_valley");
+  questEngine.enterRegion("region_demon_valley");
+  const completed = questEngine.getAllQuestProgress().find((q) => q.questId === "explore_demon_valley");
+  console.log(`  explore_demon_valley: ${completed?.status}`);
+  console.log(`  player gold: ${questEngine.getPlayer().gold} (reward +500)`);
+
+  // ============== Dialogue demo ==============
+
+  console.log("\n=== Dialogue System Demo ===");
+  const dialEngine = createEngine({ seed: 99999, data });
+
+  console.log(`\n--- 32. Hội thoại Trưởng Làng ---`);
+  const elderTalk = dialEngine.talkToNpc("village_elder");
+  if (elderTalk) {
+    console.log(`  ${elderTalk.speaker}: ${elderTalk.rootText}`);
+    console.log(`  Lựa chọn:`);
+    for (let i = 0; i < elderTalk.available.length; i++) {
+      console.log(`    ${i + 1}. ${elderTalk.available[i]!.text}`);
+    }
+    // Pick "dẹp cướp" choice
+    const chIdx = elderTalk.available.findIndex((c) => c.text.includes("dẹp cướp"));
+    if (chIdx >= 0) {
+      const next = dialEngine.chooseDialogue("village_elder", "root", chIdx);
+      console.log(`  Sau chọn: ${next?.speaker}: ${next?.text}`);
+      console.log(`  Quest active: ${dialEngine.getActiveQuests().map((q) => q.questId).join(", ") || "(none)"}`);
+    }
+  }
+
+  console.log(`\n--- 33. Lữ Khách tặng linh thảo ---`);
+  const wandererTalk = dialEngine.talkToNpc("wanderer");
+  if (wandererTalk) {
+    const herbIdx = wandererTalk.available.findIndex((c) => c.text.includes("5 cây linh thảo"));
+    if (herbIdx >= 0) {
+      const before = dialEngine.countItem("spirit_herb");
+      dialEngine.chooseDialogue("wanderer", "root", herbIdx);
+      const after = dialEngine.countItem("spirit_herb");
+      console.log(`  spirit_herb: ${before} → ${after}`);
+    }
+  }
+
+  console.log(`\n--- 34. Thanh Vân Tuần Tra ---`);
+  const patrolTalk = dialEngine.talkToNpc("thanh_van_patrol");
+  if (patrolTalk) {
+    console.log(`  Available choices:`);
+    for (const c of patrolTalk.available) {
+      console.log(`    - ${c.text}`);
+    }
+    console.log(`  Locked: ${patrolTalk.locked.length === 0 ? "(không)" : ""}`);
+    for (const l of patrolTalk.locked) {
+      console.log(`    - ${l.text} (${l.reason})`);
+    }
+  }
+
+  // ============== Shop demo ==============
+
+  console.log("\n=== Shop System Demo ===");
+  const shopEngine = createEngine({ seed: 11111, data });
+  shopEngine.state.player.gold = 500;
+
+  console.log(`\n--- 35. Mua sắm ở Thương Nhân ---`);
+  const shopItems = shopEngine.listShop("village_merchant");
+  console.log(`  Hàng có sẵn (${shopItems.length} món):`);
+  for (const it of shopItems.slice(0, 6)) {
+    const price = shopEngine.getBuyPrice("village_merchant", it.itemId);
+    console.log(`    ${data.items.get(it.itemId)?.name.padEnd(28)} giá ${price} vàng`);
+  }
+
+  console.log(`\n--- 36. Mua đan ---`);
+  const goldBefore = shopEngine.getPlayer().gold;
+  const r1 = shopEngine.buyItem("village_merchant", "hp_potion_medium", 2);
+  console.log(`  ${r1.message}`);
+  console.log(`  Vàng: ${goldBefore} → ${shopEngine.getPlayer().gold}`);
+
+  console.log(`\n--- 37. Bán linh thảo ---`);
+  shopEngine.giveItem("spirit_herb", 10);
+  const herbsBefore = shopEngine.countItem("spirit_herb");
+  const r2 = shopEngine.sellItem("village_merchant", "spirit_herb", 5);
+  console.log(`  ${r2.message}`);
+  console.log(`  Linh thảo: ${herbsBefore} → ${shopEngine.countItem("spirit_herb")}`);
+
+  console.log(`\n--- 38. Giảm giá theo phe ---`);
+  shopEngine.state.player.factionRep["village_council"] = 100;
+  const noDiscPrice = (() => {
+    shopEngine.state.player.factionRep["village_council"] = 0;
+    const p = shopEngine.getBuyPrice("village_merchant", "iron_sword");
+    shopEngine.state.player.factionRep["village_council"] = 100;
+    return p;
+  })();
+  const discPrice = shopEngine.getBuyPrice("village_merchant", "iron_sword");
+  console.log(`  Sắt Kiếm: gốc ${noDiscPrice} vàng → giảm giá ${discPrice} vàng (-${noDiscPrice - discPrice})`);
+
+  console.log("\n=== Demo complete — Tu Tiên Bát Hoang Engine ===");
+  console.log("Hệ thống: combat / hatred / faction / reputation / war / migration / cultivation / alchemy / dual cultivation / items / equipment / quests / dialogue / shop / save");
 }
 
 main().catch((err) => {

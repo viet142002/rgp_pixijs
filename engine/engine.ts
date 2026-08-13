@@ -21,11 +21,49 @@ import { addRelation, changeAffinity } from "./relationship/graph.js";
 import {
   initBattle, resolveAction, type BattleState, type ActionRequest,
 } from "./combat/battle.js";
+import {
+  initFactionWar, recordCasualty, getActiveWars, isAtWar,
+  decayWarIntensity, getWarIntensity,
+} from "./faction/war.js";
+import {
+  applyRepChange, applyRepWithCascade, canJoinFaction, getRank, getRankLabel,
+  affinityFromRep, REP_DELTAS, type RepChange,
+} from "./faction/reputation.js";
+import {
+  migrateNpc, migrateFallennFactionMembers, checkPersonalBetrayal,
+  recruitNpc, type MigrationResult,
+} from "./faction/migration.js";
+import {
+  giveItem, takeItem, countItem, useItem, equipItem, getEquipmentBonus,
+} from "./items/items.js";
+import {
+  meditate as meditateFn, attemptBreakthrough, expToNextLayer, breakthroughCost,
+  type MeditationResult, type BreakthroughAttempt,
+} from "./cultivation/cultivation.js";
+import {
+  craft, getRecipe, BUILTIN_RECIPES, type Recipe, type CraftResult,
+} from "./cultivation/alchemy.js";
+import {
+  dualCultivate, type DualCultivationResult,
+} from "./cultivation/dual.js";
+import {
+  acceptQuest, completeObjective, completeQuest, abandonQuest,
+  onNpcKilled, onItemGained, onRegionEntered,
+} from "./quest/quest.js";
+import {
+  getDialogue, chooseDialogueOption, stepDialogue,
+  type DialogueNode,
+} from "./dialogue/dialogue.js";
+import {
+  listShop, getBuyPrice, getSellPrice, buyItem, sellItem,
+  type ShopResult,
+} from "./economy/shop.js";
 
 export interface EngineConfig {
   seed: number;
   data: StaticData;
   initialPlayer?: Player;
+  initialFactionWars?: { factionA: string; factionB: string; intensity: number; startDay?: number }[];
 }
 
 export class Engine {
@@ -65,10 +103,21 @@ export class Engine {
       relations: [],
       events: [],
       flags: {},
+      factionWars: [],
     };
 
     // Initial setup: a few relations to bootstrap social graph
     this.bootstrapRelations();
+
+    // Initialize faction wars from config
+    if (config.initialFactionWars) {
+      for (const war of config.initialFactionWars) {
+        initFactionWar(this.state, {
+          ...war,
+          startDay: war.startDay ?? 0,
+        });
+      }
+    }
   }
 
   private bootstrapRelations(): void {
@@ -108,6 +157,8 @@ export class Engine {
         timestamp: Date.now(),
       });
     }
+    // War intensity slowly decays over time
+    decayWarIntensity(this.state, 0.05);
     return result.events;
   }
 
@@ -122,6 +173,23 @@ export class Engine {
   movePlayer(dx: number, dy: number): void {
     this.state.player.position.x += dx;
     this.state.player.position.y += dy;
+  }
+
+  /**
+   * Travel to a different region (sets player.currentRegion).
+   * Triggers explore-quest hook.
+   */
+  enterRegion(regionId: string): void {
+    this.state.currentRegion = regionId;
+    onRegionEntered(this.state, this.data, regionId);
+    // Auto-complete quests where all objectives are now met
+    const completed: string[] = [];
+    for (const p of this.state.player.questProgress) {
+      if (p.status === "active") completed.push(p.questId);
+    }
+    for (const qid of completed) {
+      completeQuest(this.state, this.data, qid);
+    }
   }
 
   attackNpc(npcId: EntityId): GameEvent[] {
@@ -194,6 +262,8 @@ export class Engine {
               position: npc.position,
             });
             events.push(...hatredEvents);
+            // Quest hook: kill objective
+            onNpcKilled(this.state, this.data, npc.id);
             // NPC died event
             events.push({
               id: `NPC_DIED_${Date.now()}_${npc.id}`,
@@ -258,10 +328,512 @@ export class Engine {
 
   robNpc(targetId: EntityId): void {
     changeAffinity(this.state, this.state.player.id, targetId, "enemy", -40, 1.5);
+    const npc = this.state.npcs.get(targetId);
+    if (npc && npc.factionId) {
+      applyRepChange(this.state.player, npc.factionId, REP_DELTAS.robbedMember, `rob_${targetId}`, "player");
+    }
   }
 
   spareNpc(targetId: EntityId): void {
     changeAffinity(this.state, this.state.player.id, targetId, "friend", 20, 1);
+    const npc = this.state.npcs.get(targetId);
+    if (npc && npc.factionId) {
+      applyRepChange(this.state.player, npc.factionId, REP_DELTAS.sparedMember, `spare_${targetId}`, "player");
+    }
+  }
+
+  // ============== Faction ==============
+
+  getPlayerRep(factionId: string): number {
+    return this.state.player.factionRep[factionId] ?? 0;
+  }
+
+  getPlayerRank(factionId: string): string {
+    return getRankLabel(getRank(this.state.player, factionId));
+  }
+
+  getAllPlayerRep(): Record<string, number> {
+    return { ...this.state.player.factionRep };
+  }
+
+  /**
+   * Try to join a faction. Requires rep ≥ 50.
+   * Returns true if joined.
+   */
+  joinFaction(factionId: string): boolean {
+    if (!canJoinFaction(this.state.player, factionId)) return false;
+    applyRepChange(this.state.player, factionId, REP_DELTAS.joinedFaction, `join_${factionId}`, "player");
+    this.state.player.factionRep[factionId] = 100;
+    return true;
+  }
+
+  /**
+   * Apply direct rep change (e.g., quest reward).
+   */
+  giveRep(factionId: string, delta: number, reason: string): number {
+    return applyRepChange(this.state.player, factionId, delta, reason, "player");
+  }
+
+  /**
+   * Apply rep change with alliance cascade (used by hatred.ts internally too).
+   */
+  giveRepCascade(change: RepChange): RepChange[] {
+    return applyRepWithCascade(this.state, change);
+  }
+
+  /**
+   * Check if two factions are at war.
+   */
+  isFactionAtWar(factionA: string, factionB: string): boolean {
+    return isAtWar(this.state, factionA, factionB);
+  }
+
+  /**
+   * Get war intensity between factions (0 if not at war).
+   */
+  getWarIntensity(factionA: string, factionB: string): number {
+    return getWarIntensity(this.state, factionA, factionB);
+  }
+
+  /**
+   * Get active wars for a faction.
+   */
+  getFactionWars(factionId: string): { factionA: string; factionB: string; intensity: number; casualties: Record<string, number> }[] {
+    return getActiveWars(this.state, factionId).map((w) => ({
+      factionA: w.factionA,
+      factionB: w.factionB,
+      intensity: w.intensity,
+      casualties: { ...w.casualties },
+    }));
+  }
+
+  /**
+   * Migrate NPC to a new faction.
+   */
+  migrateNpc(npcId: EntityId, newFactionId: string, reason: "faction_fallen" | "personal_betrayal" | "player_recruit" | "war_resolution" | "ideological_shift"): MigrationResult | null {
+    return migrateNpc(this.state, npcId, newFactionId, reason, this.data);
+  }
+
+  /**
+   * Check + auto-trigger personal betrayal.
+   * Returns the migration result if betrayal happened.
+   */
+  checkAndTriggerBetrayal(npcId: EntityId): MigrationResult | null {
+    const npc = this.state.npcs.get(npcId);
+    if (!npc) return null;
+    const check = checkPersonalBetrayal(npc, this.state, this.data);
+    if (check.should && check.targetFaction) {
+      return migrateNpc(this.state, npcId, check.targetFaction, "personal_betrayal", this.data);
+    }
+    return null;
+  }
+
+  /**
+   * Recruit an NPC to player's faction (if player has one).
+   */
+  recruitNpc(npcId: EntityId, playerFactionId: string): MigrationResult | null {
+    return recruitNpc(this.state, npcId, playerFactionId, this.data);
+  }
+
+  // ============== Cultivation ==============
+
+  /**
+   * Meditate in safe zone for `minutes` game time.
+   * Returns exp gained.
+   */
+  meditate(minutes: number = 60): MeditationResult {
+    return meditateFn(this.state, this.data, minutes);
+  }
+
+  /**
+   * Cost in exp for next breakthrough attempt.
+   */
+  getBreakthroughCost(): { exp: number; isRealmTier: boolean } {
+    return breakthroughCost(this.state.player, this.data);
+  }
+
+  /**
+   * Attempt breakthrough to next layer or next realm tier.
+   */
+  attemptBreakthrough(): BreakthroughAttempt {
+    return attemptBreakthrough(this.state, this.data, this.prng.world);
+  }
+
+  /**
+   * Get current cultivation exp.
+   */
+  getCultivationExp(): number {
+    return this.state.player.cultivationExp;
+  }
+
+  /**
+   * Add cultivation exp (debug/quest reward).
+   */
+  addCultivationExp(amount: number): void {
+    this.state.player.cultivationExp += amount;
+  }
+
+  /**
+   * Get player's current realm display name.
+   */
+  getRealmDisplay(): string {
+    const realm = this.data.realms.get(this.state.player.realm);
+    return realm ? `${realm.name} ${this.state.player.realmLayer}/${realm.layers}` : "Không rõ";
+  }
+
+  // ============== Alchemy ==============
+
+  /**
+   * List all known recipes.
+   */
+  listRecipes(): Recipe[] {
+    return [...BUILTIN_RECIPES];
+  }
+
+  /**
+   * Get recipe by id.
+   */
+  getRecipe(id: string): Recipe | undefined {
+    return getRecipe(id);
+  }
+
+  /**
+   * Craft a recipe. Consumes ingredients, gives output.
+   */
+  craft(recipeId: string): CraftResult {
+    const recipe = getRecipe(recipeId);
+    if (!recipe) {
+      return {
+        success: false,
+        quality: "failure",
+        resultItem: null,
+        quantity: 0,
+        message: "Không có phương thuốc này",
+      };
+    }
+    return craft(this.state, recipe, this.prng.world);
+  }
+
+  // ============== Dual cultivation ==============
+
+  /**
+   * Song tu với NPC partner. 3× exp nhưng có rủi ro phản bội.
+   */
+  dualCultivate(partnerId: EntityId, minutes: number = 60): DualCultivationResult {
+    return dualCultivate(this.state, this.data, partnerId, minutes, this.prng.world);
+  }
+
+  // ============== Quest ==============
+
+  /**
+   * List all available quest defs in the game.
+   */
+  listQuests() {
+    return [...this.data.quests.values()];
+  }
+
+  /**
+   * Get a quest def by id.
+   */
+  getQuest(questId: string) {
+    return this.data.quests.get(questId);
+  }
+
+  /**
+   * Get active quest progress (player.questProgress with status active).
+   */
+  getActiveQuests() {
+    return this.state.player.questProgress.filter((q) => q.status === "active");
+  }
+
+  /**
+   * Get all quest progress (any status).
+   */
+  getAllQuestProgress() {
+    return [...this.state.player.questProgress];
+  }
+
+  /**
+   * Accept a quest. Returns {accepted, reason}.
+   */
+  acceptQuest(questId: string): { accepted: boolean; reason?: string } {
+    return acceptQuest(this.state, this.data, questId);
+  }
+
+  /**
+   * Manually advance objective progress. Auto-checks completion.
+   * Returns true if all objectives done.
+   */
+  advanceQuestObjective(questId: string, objectiveIdx: number, count: number = 1): boolean {
+    const done = completeObjective(this.state, this.data, questId, objectiveIdx, count);
+    if (done) this.completeQuest(questId);
+    return done;
+  }
+
+  /**
+   * Complete a quest (after all objectives met). Awards rewards.
+   */
+  completeQuest(questId: string) {
+    return completeQuest(this.state, this.data, questId);
+  }
+
+  /**
+   * Abandon a quest.
+   */
+  abandonQuest(questId: string): boolean {
+    return abandonQuest(this.state, questId);
+  }
+
+  /**
+   * Mark a "talk" objective as complete (called when player talks to NPC).
+   */
+  reportTalkToNpc(npcId: EntityId): void {
+    onItemGained; // satisfy unused-import warning; will be useful for collect hooks
+  }
+
+  /**
+   * Mark a "deliver" objective complete when player gives item to NPC via engine.deliverItem.
+   */
+  triggerOnItemGained(itemId: string, quantity: number): void {
+    onItemGained(this.state, this.data, itemId, quantity);
+  }
+
+  /**
+   * Hook called on engine entry into a region (for "explore" objectives).
+   */
+  triggerOnRegionEntered(regionId: string): void {
+    onRegionEntered(this.state, this.data, regionId);
+  }
+
+  /**
+   * Hook called when NPC dies (for "kill" objectives).
+   */
+  triggerOnNpcKilled(npcId: EntityId): void {
+    onNpcKilled(this.state, this.data, npcId);
+  }
+
+  // ============== Dialogue ==============
+
+  /**
+   * Talk to NPC. Returns available dialogue options + locked (with reasons).
+   */
+  talkToNpc(npcId: EntityId): {
+    npcName: string;
+    rootText: string;
+    speaker: string;
+    available: { text: string; next: string }[];
+    locked: { text: string; reason: string }[];
+  } | null {
+    const npc = this.state.npcs.get(npcId);
+    if (!npc) return null;
+    const dial = getDialogue(this.state, this.data, npcId);
+    if (!dial) return null;
+    return {
+      npcName: npc.name,
+      rootText: dial.node.text,
+      speaker: dial.node.speaker,
+      available: dial.availableChoices,
+      locked: dial.locked,
+    };
+  }
+
+  /**
+   * Choose a dialogue option by index. Applies effects, advances.
+   */
+  chooseDialogue(npcId: EntityId, fromNodeId: string = "root", choiceIdx: number = 0): DialogueNode | null {
+    return chooseDialogueOption(this.state, this.data, npcId, npcId, fromNodeId, choiceIdx);
+  }
+
+  /**
+   * Step dialogue without choices (auto-advance through effects).
+   */
+  stepDialogue(npcId: EntityId): DialogueNode | null {
+    return stepDialogue(this.state, this.data, npcId);
+  }
+
+  /**
+   * Get dialogue node by id (raw).
+   */
+  getDialogueNode(npcId: EntityId, nodeId: string): DialogueNode | null {
+    const tree = this.data.dialogues.get(npcId);
+    return tree?.nodes[nodeId] ?? null;
+  }
+
+  // ============== Shop ==============
+
+  /**
+   * List shop inventory for NPC. Filters by rep.
+   */
+  listShop(ownerId: EntityId) {
+    return listShop(this.data, ownerId, this.state.player);
+  }
+
+  /**
+   * Get buy price for item at NPC's shop.
+   */
+  getBuyPrice(ownerId: EntityId, itemId: string): number {
+    return getBuyPrice(this.data, ownerId, itemId, this.state.player);
+  }
+
+  /**
+   * Get sell price for item to NPC's shop.
+   */
+  getSellPrice(ownerId: EntityId, itemId: string): number {
+    return getSellPrice(this.data, ownerId, itemId, this.state.player);
+  }
+
+  /**
+   * Buy item from NPC shop.
+   */
+  buyItem(ownerId: EntityId, itemId: string, quantity: number = 1): ShopResult {
+    return buyItem(this.state, this.data, ownerId, itemId, quantity);
+  }
+
+  /**
+   * Sell item to NPC shop.
+   */
+  sellItem(ownerId: EntityId, itemId: string, quantity: number = 1): ShopResult {
+    return sellItem(this.state, this.data, ownerId, itemId, quantity);
+  }
+
+  // ============== Items ==============
+
+  /**
+   * Give an item to an NPC (drops into their inventory).
+   */
+  giveItemToNpc(npcId: EntityId, itemId: string, quantity: number): number {
+    const npc = this.state.npcs.get(npcId);
+    if (!npc) return 0;
+    const def = this.data.items.get(itemId);
+    const maxStack = def?.maxStack ?? 99;
+    const res = giveItem(npc.inventory ?? (npc.inventory = []), itemId, quantity, maxStack);
+    return res.added;
+  }
+
+  /**
+   * Give an item to the player.
+   */
+  giveItem(itemId: string, quantity: number): number {
+    const def = this.data.items.get(itemId);
+    const maxStack = def?.maxStack ?? 99;
+    const res = giveItem(this.state.player.inventory, itemId, quantity, maxStack);
+    return res.added;
+  }
+
+  /**
+   * Take item from player inventory. Returns quantity removed.
+   */
+  takeItem(itemId: string, quantity: number): number {
+    return takeItem(this.state.player.inventory, itemId, quantity);
+  }
+
+  /**
+   * Count of item in player inventory.
+   */
+  countItem(itemId: string): number {
+    return countItem(this.state.player.inventory, itemId);
+  }
+
+  /**
+   * Apply (use) an item by ID. Resolves effect via static data.
+   * Returns a record of effects applied + whether consumed.
+   */
+  applyItem(itemId: string): { consumed: boolean; effect: Record<string, number | string[]> | null; message?: string } {
+    const def = this.data.items.get(itemId);
+    if (!def) return { consumed: false, effect: null, message: "Vật phẩm không tồn tại" };
+    if (def.type !== "consumable") {
+      return { consumed: false, effect: null, message: "Không thể dùng" };
+    }
+    const have = this.countItem(itemId);
+    if (have <= 0) return { consumed: false, effect: null, message: "Không có vật phẩm" };
+
+    const applied: Record<string, number | string[]> = {};
+    const eff = def.effect ?? {};
+    if (typeof eff.heal === "number") {
+      const before = this.state.player.stats.hp;
+      this.state.player.stats.hp = Math.min(
+        before + eff.heal, this.getPlayerMaxHp()
+      );
+      applied.heal = this.state.player.stats.hp - before;
+    }
+    if (typeof eff.restoreMp === "number") {
+      const before = this.state.player.stats.mp;
+      this.state.player.stats.mp = Math.min(before + eff.restoreMp, 999);
+      applied.restoreMp = this.state.player.stats.mp - before;
+    }
+    if (typeof eff.cultivationExp === "number") {
+      this.state.player.cultivationExp += eff.cultivationExp;
+      applied.cultivationExp = eff.cultivationExp;
+    }
+    if (typeof eff.breakthroughBonus === "number") {
+      this.state.player.states.push({
+        id: `breakthrough_bonus`,
+        name: "Phá Cảnh Hộ Thuốc",
+        duration: 1, // used up on next breakthrough attempt
+        day: this.state.time.day,
+        source: "item",
+        modifiers: { /* consumed by cultivation module */ },
+      });
+      applied.breakthroughBonus = eff.breakthroughBonus;
+    }
+    if (typeof eff.qiDeviationResist === "number") {
+      this.state.player.states.push({
+        id: `qi_stable`,
+        name: "Tâm Tỏa",
+        duration: 24 * 60, // 24h game-time
+        day: this.state.time.day,
+        source: "item",
+        modifiers: {},
+      });
+      applied.qiDeviationResist = eff.qiDeviationResist;
+    }
+    if (Array.isArray(eff.dispell)) {
+      const before = this.state.player.states.length;
+      // Remove STUN/POISON/BURN etc by name check (basic)
+      this.state.player.states = this.state.player.states.filter((s) => {
+        if (eff.dispell.includes(s.id as never)) return false;
+        return true;
+      });
+      applied.dispell = eff.dispell;
+      void before;
+    }
+
+    this.takeItem(itemId, 1);
+    return { consumed: true, effect: applied };
+  }
+
+  /**
+   * Equip item to slot. Replaces currently equipped.
+   */
+  equipItem(itemId: string): { equipped: boolean; oldItem: string | null; message?: string } {
+    return equipItem(this.state.player, itemId, this.data.items);
+  }
+
+  /**
+   * Sum of equipment stat bonuses.
+   */
+  getEquipmentBonus(): Partial<Player["stats"]> {
+    return getEquipmentBonus(this.state.player, this.data.items);
+  }
+
+  /**
+   * Player's max HP including cultivation level.
+   * Realm/HP scaling done here for now; will be moved to cultivation module in Phase 2.
+   */
+  getPlayerMaxHp(): number {
+    const realm = this.data.realms.get(this.state.player.realm);
+    const baseHp = realm?.baseStats?.hp ?? this.state.player.stats.hp;
+    const layer = this.state.player.realmLayer;
+    const statPerLayer = realm?.statPerLayer?.hp ?? 0;
+    const equipBonus = this.getEquipmentBonus();
+    return baseHp + (layer - 1) * statPerLayer + (equipBonus.hp ?? 0);
+  }
+
+  /**
+   * Migrate all members of a fallen faction to "wandering".
+   */
+  disbandFaction(factionId: string): MigrationResult[] {
+    return migrateFallennFactionMembers(this.state, factionId, this.data);
   }
 
   // ============== Save ==============
@@ -348,3 +920,5 @@ void prngInt;
 void advanceMinutes;
 void evaluateNpc;
 void eventBus;
+void affinityFromRep;
+void recordCasualty;

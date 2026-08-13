@@ -1,5 +1,5 @@
 {
-  "dataVersion": 1,
+  "dataVersion": 2,
   "skills": [
     {
       "id": "basic_attack",
@@ -77,7 +77,7 @@
     },
     {
       "id": "poison_sting",
-      "name": "Độc Châm",
+      "name": "�ộc Châm",
       "element": "wood",
       "mpCost": 8,
       "apCost": 1,
@@ -105,6 +105,46 @@
       "cooldown": 2,
       "range": "single",
       "statusEffect": { "type": "TAUNT", "chance": 1.0, "duration": 2 }
+    },
+    {
+      "id": "forest_stealth",
+      "name": "Lâm Ẩn Thuật",
+      "element": "wind",
+      "mpCost": 12,
+      "apCost": 2,
+      "cooldown": 3,
+      "range": "single",
+      "buff": { "stat": "evasion", "value": 30, "duration": 3 }
+    },
+    {
+      "id": "bandit_snipe",
+      "name": "Tập Kích",
+      "element": "wind",
+      "mpCost": 10,
+      "apCost": 2,
+      "cooldown": 1,
+      "range": "single",
+      "damage": { "base": 35, "scaling": "attack", "factor": 1.5 }
+    },
+    {
+      "id": "demon_curse",
+      "name": "Ma Nguyền",
+      "element": "none",
+      "mpCost": 20,
+      "apCost": 2,
+      "cooldown": 2,
+      "range": "single",
+      "statusEffect": { "type": "ATK_DOWN", "chance": 0.7, "duration": 3 }
+    },
+    {
+      "id": "healing_spring",
+      "name": "Tụ Khí Xuân",
+      "element": "wood",
+      "mpCost": 25,
+      "apCost": 3,
+      "cooldown": 2,
+      "range": "all_allies",
+      "heal": { "base": 50, "factor": 1.2 }
     }
   ]
 }

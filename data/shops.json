@@ -1,0 +1,52 @@
+{
+  "dataVersion": 1,
+  "shops": [
+    {
+      "ownerId": "village_merchant",
+      "region": "region_village",
+      "inventory": [
+        { "itemId": "hp_potion_small", "stock": -1 },
+        { "itemId": "hp_potion_medium", "stock": -1 },
+        { "itemId": "mp_potion_small", "stock": -1 },
+        { "itemId": "antidote", "stock": -1 },
+        { "itemId": "spirit_herb", "stock": -1 },
+        { "itemId": "iron_sword", "stock": 5 },
+        { "itemId": "leather_armor", "stock": 5 },
+        { "itemId": "jade_blade", "stock": 2, "minRep": { "village_council": 30 } },
+        { "itemId": "silk_robe", "stock": 2, "minRep": { "village_council": 30 } }
+      ],
+      "buyMultiplier": 1,
+      "sellMultiplier": 0.4,
+      "factionDiscount": { "village_council": 0.2 }
+    },
+    {
+      "ownerId": "thanh_van_patrol",
+      "region": "region_forest",
+      "inventory": [
+        { "itemId": "hp_potion_medium", "stock": -1 },
+        { "itemId": "mp_potion_small", "stock": -1 },
+        { "itemId": "qi_recovery_pill", "stock": 10 },
+        { "itemId": "jade_blade", "stock": 3, "minRep": { "thanh_van_sect": 30 } },
+        { "itemId": "spirit_sword", "stock": 1, "minRep": { "thanh_van_sect": 60 } },
+        { "itemId": "breakthrough_pill_minor", "stock": 5, "minRep": { "thanh_van_sect": 40 } }
+      ],
+      "buyMultiplier": 1,
+      "sellMultiplier": 0.5,
+      "factionDiscount": { "thanh_van_sect": 0.3 }
+    },
+    {
+      "ownerId": "phuong_blacksmith",
+      "region": "region_village",
+      "inventory": [
+        { "itemId": "iron_sword", "stock": -1 },
+        { "itemId": "leather_armor", "stock": -1 },
+        { "itemId": "jade_blade", "stock": -1 },
+        { "itemId": "silk_robe", "stock": -1 },
+        { "itemId": "spirit_sword", "stock": 2 },
+        { "itemId": "spirit_robe", "stock": 2 }
+      ],
+      "buyMultiplier": 1,
+      "sellMultiplier": 0.55
+    }
+  ]
+}
