@@ -14,7 +14,7 @@
  */
 
 import type { EngineState, EntityId, Player } from "../types.js";
-import type { StaticData } from "../data/loader.js";
+import type { StaticData, QuestReward } from "../data/loader.js";
 
 export type ObjectiveType = "kill" | "collect" | "talk" | "deliver" | "explore" | "survive";
 
@@ -25,6 +25,9 @@ export interface QuestObjective {
   description: string;
 }
 
+// Canonical QuestReward lives in engine/data/loader.ts (matches quest.json schema).
+export type { QuestReward } from "../data/loader.js";
+
 export type QuestStatus = "available" | "active" | "completed" | "failed";
 
 export interface QuestProgress {
@@ -33,6 +36,15 @@ export interface QuestProgress {
   objectiveProgress: Record<number, number>;
   acceptedDay: number;
   completedDay?: number;
+  objectives?: Array<{
+    id: string;
+    description: string;
+    type: "kill" | "collect" | "talk" | "deliver" | "explore" | "survive";
+    target: string;
+    current: number;
+    count: number;
+    completed: boolean;
+  }>;
 }
 
 /**
@@ -76,7 +88,7 @@ export function acceptQuest(
   const completed = new Set(
     state.player.questProgress.filter((q) => q.status === "completed").map((q) => q.questId)
   );
-  const check = canAcceptQuest(state.player, def, data, completed);
+  const check = canAcceptQuest(state.player, def, completed);
   if (!check.canAccept) return { accepted: false, reason: check.reason };
 
   const existing = state.player.questProgress.find((q) => q.questId === questId);

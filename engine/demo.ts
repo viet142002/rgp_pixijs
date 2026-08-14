@@ -8,6 +8,10 @@ import { fileURLToPath } from "node:url";
 import { loadStaticData } from "./data/loader.js";
 import { createEngine } from "./engine.js";
 import { formatTime } from "./world/time.js";
+// Polyfill IndexedDB in Node so demo can use SaveManager end-to-end.
+import "fake-indexeddb/auto";
+import { createSaveManager } from "./persistence/saveManager.js";
+import { SAVE_SCHEMA_VERSION } from "./types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -710,6 +714,33 @@ async function main(): Promise<void> {
 
   console.log("\n=== Demo complete — Tu Tiên Bát Hoang Engine ===");
   console.log("Hệ thống: combat 3v3 + formation + AOE / hatred / faction politics / reputation / war / migration / cultivation / alchemy / dual cultivation / items / equipment / quests / dialogue / shop / tile map / POI / day-night / weather / save / tutorial / modding / tribulation / legendary crafting / secret bosses / inspector / scenarios");
+
+  // 57. End-of-run persistence roundtrip — SaveManager ↔ engine
+  console.log(`\n--- 57. End-of-run persistence ---`);
+  const demoMgr = createSaveManager();
+  const snapshot = worldEngine.save();
+  const saved = await demoMgr.save(1, snapshot, "auto");
+  console.log(`  Saved slot 1 (auto): schemaVersion=${saved.schemaVersion}, size=${saved.size}B, checksum=${saved.checksum.slice(0, 12)}…`);
+
+  const reloaded = await demoMgr.load(1, "auto");
+  if (!reloaded) throw new Error("Reload returned null — roundtrip failed");
+  const checks = {
+    schemaVersion: reloaded.schemaVersion === SAVE_SCHEMA_VERSION,
+    realm: reloaded.player.realm === snapshot.player.realm,
+    region: reloaded.currentRegion === snapshot.currentRegion,
+    day: reloaded.worldTime.day === snapshot.worldTime.day,
+    npcCount: reloaded.npcs.length === snapshot.npcs.length,
+    warCount: (reloaded.factionWars ?? []).length === (snapshot.factionWars ?? []).length,
+  };
+  const allPass = Object.values(checks).every(Boolean);
+  console.log(`  Reloaded: realm=${reloaded.player.realm}, day=${reloaded.worldTime.day}, npcs=${reloaded.npcs.length}, wars=${(reloaded.factionWars ?? []).length}`);
+  console.log(`  Checks: ${JSON.stringify(checks)}`);
+  if (!allPass) throw new Error("Persistence roundtrip mismatch");
+  console.log("  ✓ End-of-run persistence OK");
+
+  const slotList = await demoMgr.list();
+  console.log(`  Slot list: ${slotList.length} entries`);
+  for (const meta of slotList) console.log(`    slot ${meta.slot} (${meta.kind}) v${meta.schemaVersion} ${meta.size}B`);
 }
 
 main().catch((err) => {

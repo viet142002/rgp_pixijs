@@ -5,7 +5,7 @@
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Trait, State, SkillDef, ElementId } from "../types.js";
+import type { Trait, State, SkillDef, ElementId, POIDef } from "../types.js";
 
 export interface ElementDef {
   id: ElementId;

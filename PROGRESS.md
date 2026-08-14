@@ -4,10 +4,11 @@ Engine game nhập vai tu tiên Việt Nam. TypeScript strict + Vitest.
 
 ## Tổng quan
 
-- **Tests**: 165/165 passing (18 files)
-- **Modules**: 50+ files TypeScript trong `engine/`
+- **Tests**: 219/219 passing (23 files)
+- **Modules**: 60+ files TypeScript trong `engine/`
 - **Data**: JSON trong `data/` + modding qua `data/mods/`
-- **Demo**: `engine/demo.ts` 56 sections
+- **Demo**: `engine/demo.ts` 57 sections
+- **Persistence**: IndexedDB qua Dexie + SHA-256 checksum + migration chain (v1→v2)
 
 ## Phase 1-6: Nền tảng
 
@@ -72,6 +73,46 @@ Stance rules:
   - `ascension_attempt` — Nguyên Anh max stats
   - `debug_sandbox` — tất cả flag mở
 
+## Batch 5: Persistence + Migration
+
+### IndexedDB SaveManager (spec/03 E1-E5)
+- `engine/persistence/db.ts` — Dexie schema, `MAX_MANUAL_SLOTS=3`, `AUTO_SLOT=1`, composite key `slot:kind`
+- `engine/persistence/checksum.ts` — SHA-256 (browser `crypto.subtle` + `node:crypto` fallback)
+- `engine/persistence/saveManager.ts` — `SaveManager` class:
+  - `save(slot, payload, kind?)` — atomic IDB tx, checksum compute, returns `SaveMeta`
+  - `load(slot, kind?)` — read + verify checksum + auto-migrate
+  - `list()` — metadata only (no payload)
+  - `delete(slot, kind?)` — remove
+  - `quotaCheck()` — usage estimate
+  - In-memory fallback when IDB unavailable (Node without polyfill)
+- `engine/persistence/migration.ts` — `MIGRATIONS` chain + `migrate(payload, target)`
+
+### Schema v2 migration
+- `SAVE_SCHEMA_VERSION=2` (types.ts)
+- v1→v2: thêm `factionWars` default `[]` khi missing (backward compat)
+
+### Engine integration
+- `EngineConfig.saveManager` — optional; nếu null → no-op save
+- `EngineConfig.autoSaveEveryTicks` (default 30) + `dirtySaveThreshold` (default 10)
+- Hooks (spec E1):
+  - `enterRegion` → `maybeSave("area_change")`
+  - `attackNpc` → `maybeSave("pre_combat")`
+  - `endBattle` → `maybeSave("post_combat")`
+  - Social actions (`giveGift`, `robNpc`, `spareNpc`, ...) → `markPlayerAction()`
+  - `tickWorld()` auto-save every N ticks via `tickWorld`
+- Public fields: `saveManager`, `autoSaveEveryTicks`, `ticksSinceAutoSave`, `actionsSinceDirtySave`, `lastAutoSave`
+
+### Demo end-of-run roundtrip
+- Section 57: SaveManager → save snapshot to slot 1 (auto) → reload → verify 6 fields (schemaVersion, realm, region, day, npc count, war count) → list slot metadata
+
+### Test coverage
+- `tests/persistence.test.ts` — 12 tests: IDB CRUD, checksum, migration, slot isolation
+- `tests/engine-persistence.test.ts` — 6 tests: SaveManager ↔ engine integration
+- `tests/save-hooks.test.ts` — 6 tests: enterRegion, attackNpc, maybeSave, markPlayerAction, threshold flush
+- `tests/migration.test.ts` — 8 tests: direct migrate + engine roundtrip + newer-schema rejection
+- `tests/combat6slot.test.ts` — 22 tests: 6-slot 2-row grid + flanking + cover
+- `vitest.config.ts` — `setupFiles: ["./tests/setup.ts"]` (fake-indexeddb/auto)
+
 ## Sửa đáng chú ý
 
 1. **maxHp/maxMp**: thêm vào `Stats` interface. Derive từ `hp`/`mp` cho NPC trong `materializeNpc`, init trong `createDefaultPlayer`.
@@ -105,6 +146,7 @@ rpg_game/
 │   ├── faction/           # politics + reputation + war + migration
 │   ├── modding/           # mod loader
 │   ├── npc/               # materialize + templates
+│   ├── persistence/       # IndexedDB + checksum + migration
 │   ├── quest/             # quest system
 │   ├── relationship/      # hatred + relations
 │   ├── save/              # serializer
@@ -114,8 +156,8 @@ rpg_game/
 │   ├── world/             # time + weather + terrain + POI
 │   ├── dialogue/          # dialogue trees
 │   ├── engine.ts          # Engine class — main API
-│   └── demo.ts            # CLI demo 56 sections
-└── tests/                 # 18 test files, 165 tests
+│   └── demo.ts            # CLI demo 57 sections
+└── tests/                 # 23 test files, 219 tests
 ```
 
 ## Cách dùng
@@ -142,9 +184,10 @@ engine.attackNpc("wanderer");
 
 ## Tiếp theo (chưa làm)
 
-- IndexedDB persistence (hiện dùng JSON snapshot trong `engine/save/`)
-- Web UI / TUI binding
+- Web UI / TUI binding (PixiJS / React / terminal)
 - Localization chuyển sang module (i18n)
 - Thêm quest defs cho onboarding chain (đã có code, cần thêm vào `data/quests.json`)
 - Nguyên Anh / Hoá Thần / Độ Kiếp realm tier cao hơn
 - Multiplayer async (nếu cần)
+- Web Worker cho checksum/migration (off main thread)
+- Quota UI + save browser warning

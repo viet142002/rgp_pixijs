@@ -38,18 +38,6 @@ import {
   decayWarIntensity, getWarIntensity,
 } from "./faction/war.js";
 import {
-  applyRepChange, applyRepWithCascade, canJoinFaction, getRank, getRankLabel,
-  affinityFromRep, REP_DELTAS, type RepChange,
-} from "./faction/reputation.js";
-import {
-  migrateNpc, migrateFallennFactionMembers, checkPersonalBetrayal,
-  recruitNpc, type MigrationResult,
-} from "./faction/migration.js";
-import {
-  computeFactionStance, evaluateFactionPolitics, getAllStances,
-  type FactionStance,
-} from "./faction/politics.js";
-import {
   giveItem, takeItem, countItem, useItem, equipItem, getEquipmentBonus,
 } from "./items/items.js";
 import {
@@ -87,12 +75,29 @@ import {
   type ShopResult,
 } from "./economy/shop.js";
 import { getNextStep as tutNextStep, completeStep as tutComplete, type TutorialStep } from "./tutorial/tutorial.js";
+import { SaveManager, type SaveMeta } from "./persistence/saveManager.js";
+import { AUTO_SLOT } from "./persistence/db.js";
 
 export interface EngineConfig {
   seed: number;
   data: StaticData;
   initialPlayer?: Player;
   initialFactionWars?: { factionA: string; factionB: string; intensity: number; startDay?: number }[];
+  /**
+   * Optional IndexedDB-backed save manager. When provided, save()/load()
+   * can target slots via `slot` arg, and auto-save fires every N ticks.
+   */
+  saveManager?: SaveManager;
+  /**
+   * Auto-save interval in world ticks (1 tick = 1 game-second per spec/03).
+   * Spec/03 E1: auto save every 30 game-second. Default 30 when saveManager set, 0 = disabled.
+   */
+  autoSaveEveryTicks?: number;
+  /**
+   * Player actions between dirty-threshold saves (spec E1 "Dirty threshold").
+   * Default 10.
+   */
+  dirtySaveThreshold?: number;
 }
 
 export class Engine {
@@ -104,11 +109,27 @@ export class Engine {
   battle: BattleState | null = null;
   lastBattleResult: "victory" | "defeat" | "escape" | null = null;
   eventQueue: DelayedEventQueue = new DelayedEventQueue();
+  /** Optional IndexedDB-backed save store. */
+  saveManager: SaveManager | null;
+  /** Auto-save cadence in world ticks (0 = disabled). */
+  autoSaveEveryTicks: number;
+  /** Game-second since last auto-save. */
+  private ticksSinceAutoSave = 0;
+  /** Last auto-save metadata, for inspection. */
+  lastAutoSave: SaveMeta | null = null;
+  /** Counter of player actions since last dirty-threshold save. */
+  actionsSinceDirtySave = 0;
+  /** Auto-save when this many player actions accumulate (spec E1 "Dirty threshold"). */
+  dirtySaveThreshold: number = 10;
 
   constructor(config: EngineConfig) {
     this.seed = config.seed;
     this.data = config.data;
     this.prng = initPrngStates(config.seed);
+    this.saveManager = config.saveManager ?? null;
+    this.autoSaveEveryTicks = config.autoSaveEveryTicks
+      ?? (config.saveManager ? 30 : 0);
+    this.dirtySaveThreshold = config.dirtySaveThreshold ?? 10;
     this.serializer = new SaveSerializer({
       prngSeed: config.seed,
       dataVersion: config.data.dataVersion,
@@ -198,6 +219,32 @@ export class Engine {
     decayWarIntensity(this.state, 0.05);
     // Faction politics daily evaluation
     evaluateFactionPolitics(this.state, this.data, this.prng.world, this.state.time.day);
+
+    // Auto-save (spec/03 E1: every 30 game-second when SaveManager wired).
+    if (this.saveManager && this.autoSaveEveryTicks > 0) {
+      this.ticksSinceAutoSave++;
+      if (this.ticksSinceAutoSave >= this.autoSaveEveryTicks) {
+        this.ticksSinceAutoSave = 0;
+        // Fire-and-forget; caller can inspect lastAutoSave for confirmation.
+        const payload = this.save();
+        this.lastAutoSave = null;
+        this.saveManager.save(AUTO_SLOT, payload, "auto")
+          .then((meta) => { this.lastAutoSave = meta; })
+          .catch((err: unknown) => {
+            eventBus.emit({
+              id: `autosave_fail_${Date.now()}`,
+              type: "COMBAT_ENDED",
+              source: "system",
+              targets: [],
+              data: { kind: "autosave_error", error: String(err) },
+              day: this.state.time.day,
+              tick: this.state.tick,
+              timestamp: Date.now(),
+            });
+          });
+      }
+    }
+
     return result.events;
   }
 
@@ -328,14 +375,9 @@ export class Engine {
 
   // ============== Player actions ==============
 
-  movePlayer(dx: number, dy: number): void {
-    this.state.player.position.x += dx;
-    this.state.player.position.y += dy;
-  }
-
   /**
    * Travel to a different region (sets player.currentRegion).
-   * Triggers explore-quest hook.
+   * Triggers explore-quest hook + area-change save (spec E1).
    */
   enterRegion(regionId: string): void {
     this.state.currentRegion = regionId;
@@ -348,6 +390,7 @@ export class Engine {
     for (const qid of completed) {
       completeQuest(this.state, this.data, qid);
     }
+    this.maybeSave("area_change");
   }
 
   attackNpc(npcId: EntityId): GameEvent[] {
@@ -384,6 +427,7 @@ export class Engine {
     });
 
     this.fireTutorial("on_first_combat");
+    this.maybeSave("pre_combat");
 
     return events;
   }
@@ -460,6 +504,7 @@ export class Engine {
 
     this.lastBattleResult = this.battle.result ?? null;
     this.battle = null;
+    this.maybeSave("post_combat");
     return events;
   }
 
@@ -488,6 +533,7 @@ export class Engine {
 
   giveGift(targetId: EntityId, value: number): void {
     changeAffinity(this.state, this.state.player.id, targetId, "friend", value * 0.5, 1);
+    this.markPlayerAction();
   }
 
   robNpc(targetId: EntityId): void {
@@ -496,6 +542,7 @@ export class Engine {
     if (npc && npc.factionId) {
       applyRepChange(this.state.player, npc.factionId, REP_DELTAS.robbedMember, `rob_${targetId}`, "player");
     }
+    this.markPlayerAction();
   }
 
   spareNpc(targetId: EntityId): void {
@@ -504,6 +551,7 @@ export class Engine {
     if (npc && npc.factionId) {
       applyRepChange(this.state.player, npc.factionId, REP_DELTAS.sparedMember, `spare_${targetId}`, "player");
     }
+    this.markPlayerAction();
   }
 
   // ============== Faction ==============
@@ -1014,8 +1062,9 @@ export class Engine {
     if (Array.isArray(eff.dispell)) {
       const before = this.state.player.states.length;
       // Remove STUN/POISON/BURN etc by name check (basic)
+      const dispellList = (eff.dispell as string[]) ?? [];
       this.state.player.states = this.state.player.states.filter((s) => {
-        if (eff.dispell.includes(s.id as never)) return false;
+        if (dispellList.includes(s.id)) return false;
         return true;
       });
       applied.dispell = eff.dispell;
@@ -1062,17 +1111,97 @@ export class Engine {
 
   // ============== Save ==============
 
+  /**
+   * Serialize current state to GameSave.
+   * When `slot` and `kind` are provided AND saveManager is wired, also
+   * persist to IDB atomically. Returns raw payload + optional meta.
+   */
+  async saveToSlot(
+    slot: number,
+    kind: "manual" | "auto" = "manual"
+  ): Promise<{ payload: GameSave; meta: SaveMeta | null }> {
+    const payload = this.save();
+    if (!this.saveManager) return { payload, meta: null };
+    const meta = await this.saveManager.save(slot, payload, kind);
+    return { payload, meta };
+  }
+
   save(): GameSave {
     // Sync worldEvents from eventQueue
     this.state.events = this.eventQueue.list();
     return this.serializer.serialize(this.state);
   }
 
+  /**
+   * Load. Backward-compat: accepts raw GameSave arg directly.
+   * With saveManager wired, use `loadFromSlot(slot, kind?)` for IDB fetch.
+   */
   load(save: GameSave): void {
     this.state = this.serializer.deserialize(save);
     this.eventQueue = new DelayedEventQueue();
     for (const e of this.state.events) {
       this.eventQueue.enqueue(e);
+    }
+  }
+
+  /** Load from IDB-backed save slot (requires saveManager). */
+  async loadFromSlot(
+    slot: number,
+    kind: "manual" | "auto" = "manual"
+  ): Promise<GameSave | null> {
+    if (!this.saveManager) {
+      throw new Error("Engine.loadFromSlot requires saveManager in config");
+    }
+    const payload = await this.saveManager.load(slot, kind);
+    if (payload) this.load(payload);
+    return payload;
+  }
+
+  /** List all saves in the IDB store. */
+  async listSaves(): Promise<SaveMeta[]> {
+    if (!this.saveManager) return [];
+    return this.saveManager.list();
+  }
+
+  /** Delete a save slot. */
+  async deleteSave(slot: number, kind: "manual" | "auto" = "manual"): Promise<void> {
+    if (!this.saveManager) return;
+    await this.saveManager.delete(slot, kind);
+  }
+
+  /**
+   * Centralized save trigger (spec/03 E1 trigger table).
+   * - Always resets dirty counter on success.
+   * - Returns null when saveManager not wired.
+   *
+   * Triggers handled:
+   *   area_change    — player crosses region boundary.
+   *   pre_combat     — before battle begins (attackNpc).
+   *   post_combat    — after battle ends.
+   *   player_action  — called from markPlayerAction for dirty-threshold flush.
+   *   manual         — explicit saveToSlot calls.
+   */
+  async maybeSave(reason: "area_change" | "pre_combat" | "post_combat" | "player_action" | "manual"): Promise<SaveMeta | null> {
+    if (!this.saveManager) return null;
+    const payload = this.save();
+    const meta = await this.saveManager.save(AUTO_SLOT, payload, "auto");
+    this.lastAutoSave = meta;
+    this.actionsSinceDirtySave = 0;
+    return meta;
+  }
+
+  /**
+   * Mark a player action. Increments dirty counter; flushes via maybeSave
+   * when threshold reached (spec E1 "Dirty threshold").
+   *
+   * Counter resets immediately on threshold hit so concurrent action
+   * sequences don't trigger another flush mid-save.
+   */
+  markPlayerAction(): void {
+    this.actionsSinceDirtySave++;
+    if (this.actionsSinceDirtySave >= this.dirtySaveThreshold) {
+      this.actionsSinceDirtySave = 0;
+      void this.maybeSave("player_action");
     }
   }
 

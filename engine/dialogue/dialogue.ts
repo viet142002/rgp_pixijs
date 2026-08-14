@@ -266,4 +266,4 @@ export function stepDialogue(
 }
 
 // Re-export for convenience
-export type { DialogueTree };
+export type { DT as DialogueTree };

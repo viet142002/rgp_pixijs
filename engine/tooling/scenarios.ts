@@ -42,7 +42,6 @@ export const SCENARIOS: Record<string, Scenario> = {
       engine.state.player.factionRep["demon_sect"] = -20;
       // Add initial war
       engine.state.factionWars.push({
-        id: `war_${Date.now()}`,
         factionA: "thanh_van_sect",
         factionB: "demon_sect",
         intensity: 75,

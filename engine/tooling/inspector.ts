@@ -21,10 +21,10 @@ export function inspectPlayer(engine: Engine): string[] {
     `realm=${realm} exp=${p.cultivationExp}/${engine.getBreakthroughCost().exp}`,
     `hp=${p.stats.hp}/${p.stats.maxHp} mp=${p.stats.mp}/${p.stats.maxMp}`,
     `atk=${p.stats.attack} def=${p.stats.defense} spd=${p.stats.speed}`,
-    `gold=${p.gold} lvl=${p.level}`,
+    `gold=${p.gold} realmLayer=${p.realmLayer}`,
     `factionRep: ${Object.entries(p.factionRep).map(([k, v]) => `${k}:${v}`).join(" ")}`,
     `quests: ${p.questProgress.length} (${p.questProgress.filter((q) => q.status === "active").length} active)`,
-    `inventory: ${p.items?.length ?? 0} items`,
+    `inventory: ${p.inventory?.length ?? 0} items`,
     `titles: ${p.titles.join(", ") || "(none)"}`,
     `flags: ${Object.keys(p.flags).join(", ") || "(none)"}`,
   ];

@@ -299,7 +299,8 @@ export type EventType =
   | "PLAYER_REALM_UP" | "PLAYER_DIED" | "RELATION_CHANGED"
   | "GRUDGE_ADDED" | "GRUDGE_DECAYED" | "HATRED_PROPAGATED"
   | "FACTION_REP_CHANGED" | "WORLD_TIME_TICK" | "DAY_CHANGED"
-  | "AREA_ENTERED" | "ENCOUNTER_TRIGGERED" | "COMBAT_ENDED";
+  | "AREA_ENTERED" | "ENCOUNTER_TRIGGERED" | "COMBAT_ENDED"
+  | "TRIBULATION_WAVE" | "TRIBULATION_FAILED" | "ASCENSION";
 
 export interface GameEvent {
   id: string;
@@ -340,7 +341,7 @@ export interface GameSave {
   factionWars?: FactionWarState[]; // optional for backward compat
 }
 
-export const SAVE_SCHEMA_VERSION = 1;
+export const SAVE_SCHEMA_VERSION = 2;
 
 // ============== Engine state ==============
 

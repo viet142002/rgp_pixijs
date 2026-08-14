@@ -30,7 +30,9 @@ function makeCombatant(
     col,
     stats: {
       hp,
+      maxHp: hp,
       mp: 50,
+      maxMp: 50,
       attack,
       defense,
       speed,

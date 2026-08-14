@@ -25,7 +25,7 @@ function mkCombatant(
     team,
     row,
     col,
-    stats: { hp, mp: 50, attack: 50, defense: 10, speed: 10, critRate: 0.05, critDamage: 1.5, evasion: 0.05, accuracy: 0.95 },
+    stats: { hp, maxHp: hp, mp: 50, maxMp: 50, attack: 50, defense: 10, speed: 10, critRate: 0.05, critDamage: 1.5, evasion: 0.05, accuracy: 0.95 },
     element: "fire",
     elementResist: {},
     traits: [],

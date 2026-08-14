@@ -17,9 +17,17 @@ export interface MigrationStep {
 }
 
 export const MIGRATIONS: MigrationStep[] = [
-  // Schema v1 → v2 placeholder.
-  // Future example:
-  // { from: 1, to: 2, apply: (p) => ({ ...p, factionWars: p.factionWars ?? [] }) },
+  // Schema v1 → v2: spec/03 "Version migration" example.
+  // Adds factionWars as empty array when missing (older saves omitted it).
+  {
+    from: 1,
+    to: 2,
+    apply: (p) => ({
+      ...p,
+      factionWars: Array.isArray(p.factionWars) ? p.factionWars : [],
+      schemaVersion: 2,
+    }),
+  },
 ];
 
 /**

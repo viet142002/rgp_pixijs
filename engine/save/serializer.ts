@@ -73,6 +73,7 @@ export class SaveSerializer {
       events: workingSave.worldEvents.map((e) => ({ ...e })),
       flags: { ...workingSave.worldFlags },
       factionWars: (workingSave as GameSave & { factionWars?: typeof workingSave.worldEvents }).factionWars ?? [],
+      tutorial: { currentIdx: 0, completed: [], done: false },
     };
   }
 

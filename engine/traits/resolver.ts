@@ -89,7 +89,9 @@ function applyModifier(target: ResolvedModifiers, mod: TraitModifier): void {
 export function applyToStats(base: Stats, mod: ResolvedModifiers): Stats {
   return {
     hp: base.hp,
+    maxHp: base.maxHp,
     mp: base.mp,
+    maxMp: base.maxMp,
     attack: Math.round(base.attack * mod.totalDamageMultiplier),
     defense: Math.round(base.defense * mod.totalDefenseMultiplier),
     speed: Math.round(base.speed * mod.totalSpeedMultiplier),
@@ -126,7 +128,9 @@ export function applyStatusToStats(
 
   return {
     hp: base.hp,
+    maxHp: base.maxHp,
     mp: base.mp,
+    maxMp: base.maxMp,
     attack: Math.round(base.attack * dmgMul),
     defense: Math.round(base.defense * defMul),
     speed: Math.round(base.speed * spdMul),

@@ -61,6 +61,7 @@ export function ensureOnboardingQuests(
     state.player.questProgress.push({
       questId: q.questId,
       status: "active",
+      objectiveProgress: {},
       objectives: q.objectives.map((o) => ({
         id: o.id,
         description: o.description,
@@ -70,7 +71,7 @@ export function ensureOnboardingQuests(
         count: o.count,
         completed: false,
       })),
-      startedDay: state.time.day,
+      acceptedDay: state.time.day,
     });
     added.push(q.questId);
   }
